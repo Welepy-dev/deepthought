@@ -19,16 +19,31 @@ app.use(express.static(join(__dirname, "public"))); // serve files from this dir
 // Handle socket.io connections
 io.on('connection', (socket) => {
 		console.log('A user connected:', socket.id);
-
 		//socket -> utilizador que se conectou
 		//socket.id -> identificador da conexao
 
+		// 1. Create a new player state for this specific socket
+		players[socket.id] = {
+			x: Math.floor(Math.random() * 700) + 50, // Random X between 50-750
+			y: Math.floor(Math.random() * 500) + 50, // Random Y between 50-550
+			id: socket.id
+		};
+
+		// 2. Send the current players list to the NEW player only
+		socket.emit('currentPlayers', players);
+
+		// 3. Tell all OTHER players that a new player has joined
+		socket.broadcast.emit('newPlayer', players[socket.id]);
+
 		socket.on('disconnect', () => {
 				console.log('User disconnected:', socket.id);
+				// 4. Remove player from our object and tell everyone
+				delete players[socket.id];
+				io.emit('playerDisconnected', socket.id);
 		});
 });
 
-const PORT = 8081;
+const PORT = 3000;
 httpServer.listen(PORT, () => {
 	console.log(`Server running at http://localhost:${PORT}`);
 });
