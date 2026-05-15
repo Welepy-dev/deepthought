@@ -1,0 +1,23 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+@font-face {
+	font-family: "Karmatic_arcade";
+	src: url("./assets/fonts/Karmatic_arcade.ttf") format("truetype");
+	font-weight: normal;
+	font-style: normal;
+} 
+@font-face {
+	font-family: "PressStart";
+	src: url("./assets/fonts/PressStart2P-Regular.ttf") format("truetype");
+	font-weight: normal;
+	font-style: normal;
+}
+
+body {
+	cursor: url("./assets/cursor.png"), auto;
+}
+
+a, button {
+	cursor: url("./assets/hyperlink_cursor-export.png"), pointer;
+}
