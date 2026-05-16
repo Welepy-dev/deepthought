@@ -1,4 +1,6 @@
-import { Link } from "react-router"
+import CustomButton from "../components/CustomButton"
+import CustomLink from "../components/CustomLink"
+
 
 export default function SignIn() {
 	return (
@@ -7,27 +9,19 @@ export default function SignIn() {
 
 				<div>
 
-					<Link to={"Home"} className="text-contrast py-8  text-center font-custom text-4xl">
-						Deepthought
-					</Link>
+					<CustomLink textSize="4xl" name="Deepthought" route="Home" highlight={false} fontName="custom"/>
 
 					<div className="text-contrast pt-8 text-center font-pressStart">
 						Exclusively for 42 Network students
 					</div>
 
-					<button className="text-neutral_contrast block mt-24 mx-auto font-pressStart text-[14px] 
-						bg-contrast border-black border-t-4 border-l-4 border-b-8 border-r-8 hover:border-t-4 hover:border-l-4 hover:border-b-4 hover:border-r-4
-						hover:translate-x-1 hover:translate-y-1
-						transition-all duration-100 hover:bg-secundary
-						py-4 px-10">
-							Login with 42
-					</button>
+					<CustomButton name="Login with 42" />
 
 				</div>
 
 				<div className="flex flex-col text-center xl:flex-row pb-4 justify-around w-full ">
-					<Link className="font-pressStart text-contrast hover:text-secundary transition" to={"ToS"}>Terms of Service</Link>
-					<Link className="font-pressStart text-contrast hover:text-secundary transition" to={"PrivacyPolicy"}>Privacy Policy</Link>
+					<CustomLink name="Terms of Service" route="ToS" highlight={true} fontName="pressStart" textSize=""/>
+					<CustomLink name="Privacy Policy" route="PrivacyPolicy" highlight={true} fontName="pressStart" textSize=""/>
 				</div>
 			</div>
 		</>
