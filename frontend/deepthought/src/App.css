@@ -17,6 +17,18 @@
   }
 }
 
+.stars {
+  background-image: 
+      radial-gradient(1px 1px at 20px 30px, #ffffff, rgba(0,0,0,0)),
+      radial-gradient(1px 1px at 40px 70px, #ffffff, rgba(0,0,0,0)),
+      radial-gradient(1px 1px at 50px 160px, #ffffff, rgba(0,0,0,0)),
+      radial-gradient(1px 1px at 90px 40px, #ffffff, rgba(0,0,0,0)),
+      radial-gradient(1px 1px at 130px 80px, #ffffff, rgba(0,0,0,0)),
+      radial-gradient(1px 1px at 160px 120px, #ffffff, rgba(0,0,0,0));
+  background-repeat: repeat;
+  background-size: 200px 200px;
+}
+
 .hero {
   position: relative;
 
@@ -181,4 +193,38 @@
     right: 0;
     border-right-color: var(--border);
   }
+}
+/* ── CRT Filter ─────────────────────────────────────────── */
+
+.crt-overlay {
+  pointer-events: none;
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  overflow: hidden;
+  mix-blend-mode: normal;
+}
+
+/* Scanlines */
+.crt-scanlines {
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    to bottom,
+    transparent 0px,
+    transparent 2px,
+    rgba(0, 0, 0, 0.18) 2px,
+    rgba(0, 0, 0, 0.18) 4px
+  );
+}
+
+/* Vignette + screen curvature illusion */
+.crt-vignette {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    ellipse at center,
+    transparent 60%,
+    rgba(0, 0, 0, 0.55) 100%
+  );
 }
