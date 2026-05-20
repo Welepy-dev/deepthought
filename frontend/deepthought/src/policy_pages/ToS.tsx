@@ -3,7 +3,7 @@ import ReactMarkdown from 'react-markdown'
 
 function ScrollableCard({ children }: PropsWithChildren) {
 	return (
-		<div className="text-contrast font-sans w-2/3 h-full bg-neutral_contrast border-b-8 border-r-8 border-l-4 border-t-4 border-black overflow-auto p-6">
+		<div className="text-contrast font-sans w-2/3 scrollbar-none my-12 h-90% overflow-auto bg-neutral_contrast border-b-8 border-r-8 border-l-4 border-t-4 border-black p-6">
 			{children}
 		</div>
 	)
@@ -55,8 +55,10 @@ export default function ToS() {
 	}, [])
 
 	return (
-		<ScrollableCard>
-			<ReactMarkdown components={mdComponents}>{content}</ReactMarkdown>
-		</ScrollableCard>
+		<div className='flex justify-center h-screen'>
+			<ScrollableCard>
+				<ReactMarkdown components={mdComponents}>{content}</ReactMarkdown>
+			</ScrollableCard>
+		</div>
 	)
 }
