@@ -12,5 +12,5 @@ export default function PhaserGame() {
     return () => game.destroy(true);
   }, []);
 
-  return <div ref={containerRef} />;
+  return <div className="bg-neutral_contrast border-b-8 border-r-8 border-l-4 border-t-4 border-black"> <div ref={containerRef} /> </div>;
 }
