@@ -4,11 +4,11 @@ import Phaser from "phaser";
 // import { MenuScene } from "./scenes/MenuScene";
 
 export function startGame(parent: string | HTMLElement): Phaser.Game {
-  return new Phaser.Game({
-    type: Phaser.AUTO,
-    parent,
-    width: 800,
-    height: 600,
-    // scene: [MenuScene, GameScene],
-  });
+	return new Phaser.Game({
+		type: Phaser.AUTO,
+		parent,
+		width: 800,
+		height: 600,
+		// scene: [MenuScene, GameScene],
+	});
 }
