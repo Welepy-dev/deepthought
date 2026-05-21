@@ -1,6 +1,6 @@
 // PhaserGame.jsx - the bridge, nothing more
 import { useEffect, useRef } from "react";
-import { startGame } from "./client";
+import { startGame } from "../game/client";
 
 export default function PhaserGame() {
   const containerRef = useRef<HTMLDivElement | null>(null);

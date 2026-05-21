@@ -3,7 +3,7 @@ import App from "../App";
 import EmailSignIn from "../signin/email_signin";
 import SignIn from "../signin/signin";
 import OTPEmail from "../signin/OTPemail";
-import PhaserGame from "../game/PhaserGame";
+import PhaserGame from "../components/PhaserGame";
 import PrivacyPolicy from "../policy_pages/PrivacyPolicy";
 import ToS from "../policy_pages/ToS";
 
