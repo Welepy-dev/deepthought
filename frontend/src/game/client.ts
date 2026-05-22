@@ -14,15 +14,22 @@ class GameScene extends Phaser.Scene {
 		[1, 1, 1, 1, 1, 1, 1, 1],
 		[1, 1, 1, 1, 1, 1, 1, 1],
 	]
+	private offsetX = 0
+	private offsetY = 0
+
+	preload() {
+		// Inside your Phaser preload() function:
+		this.load.image('wooden-floor', 'assets/woodenfloor.png');
+	}
 
 	create() {
 	// Center the map on screen
-		const offsetX = this.cameras.main.width / 2
-		const offsetY = this.cameras.main.height / 3
+		this.offsetX = this.cameras.main.width / 2
+		this.offsetY = this.cameras.main.height / 3
 
 		this.input.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
-			const isoX = pointer.x - offsetX
-			const isoY = pointer.y - offsetY
+			const isoX = pointer.x - this.offsetX
+			const isoY = pointer.y - this.offsetY
 			let { x: tileX, y: tileY } = isoToCart(isoX, isoY)
 			
 			tileX = Math.floor(tileX)
@@ -40,13 +47,12 @@ class GameScene extends Phaser.Scene {
 				const { x, y } = cartToIso(col, row)
 
 				// Choose tile texture based on type
-				const texture	= tileType === 0 ? 'grass'
-								: tileType === 1 ? 'wall'
-								: 'water'
+				if (tileType === 0) continue // Skip empty tiles
+				if (tileType === 1) var texture = 'wooden-floor' // Placeholder for different types
 
 				const tile = this.add.image(
-					x + offsetX,
-					y + offsetY,
+					x + this.offsetX,
+					y + this.offsetY,
 					texture
 				)
 
@@ -54,6 +60,14 @@ class GameScene extends Phaser.Scene {
 				tile.setDepth(col + row)
 			}
 		}
+
+	}
+
+	update(time: number, delta: number): void {
+		const worldX = this.input.activePointer.worldX - this.offsetX
+		const worldY = this.input.activePointer.worldY - this.offsetY
+		const { x: tileX, y: tileY } = isoToCart(worldX, worldY)
+		// console.log(`Mouse at world coords: (${worldX.toFixed(2)}, ${worldY.toFixed(2)}) - Tile coords: (${tileX.toFixed(2)}, ${tileY.toFixed(2)})`)
 	}
 
 }

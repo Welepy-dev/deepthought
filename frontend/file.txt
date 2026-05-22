@@ -1,0 +1,64 @@
+.
+├── assets
+│   └── woddenfloor.png
+├── dist
+│   ├── assets
+│   │   ├── hero-CLDdwZDr.png
+│   │   ├── index-D_EYnAPy.css
+│   │   ├── index-e3oovLz4.js
+│   │   ├── Karmatic_arcade-Ce2JsoxT.ttf
+│   │   └── PressStart2P-Regular-DogiNJoF.ttf
+│   ├── favicon.svg
+│   ├── icons.svg
+│   └── index.html
+├── eslint.config.js
+├── file.txt
+├── index.html
+├── package.json
+├── package-lock.json
+├── postcss.config.js
+├── public
+│   ├── favicon.svg
+│   ├── icons.svg
+│   ├── privacy_policy.md
+│   └── ToS.md
+├── README.md
+├── src
+│   ├── App.css
+│   ├── App.tsx
+│   ├── assets
+│   │   ├── 42Logo.png
+│   │   ├── closed_email.png
+│   │   ├── cursor2.png
+│   │   ├── cursor.png
+│   │   ├── fonts
+│   │   │   ├── Karmatic_arcade.ttf
+│   │   │   └── PressStart2P-Regular.ttf
+│   │   ├── hero.png
+│   │   ├── hyperlink_cursor-export.png
+│   │   ├── open_email.png
+│   │   ├── react.svg
+│   │   └── vite.svg
+│   ├── components
+│   │   ├── CustomButton.tsx
+│   │   └── PhaserGame.tsx
+│   ├── game
+│   │   └── client.ts
+│   ├── index.css
+│   ├── main.tsx
+│   ├── policy_pages
+│   │   ├── PrivacyPolicy.tsx
+│   │   └── ToS.tsx
+│   ├── routes
+│   │   └── index.tsx
+│   └── signin
+│       ├── email_signin.tsx
+│       ├── OTPemail.tsx
+│       └── signin.tsx
+├── tailwind.config.js
+├── tsconfig.app.json
+├── tsconfig.json
+├── tsconfig.node.json
+└── vite.config.ts
+
+13 directories, 49 files
