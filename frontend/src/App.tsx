@@ -11,11 +11,11 @@ export default function App({CustomComponent} : {CustomComponent : any}) {
       </div>
 
       {/* CRT Filter Overlay */}
-      <div className="crt-overlay" aria-hidden="true">
+      {/* <div className="crt-overlay" aria-hidden="true">
         <div className="crt-scanlines" />
         <div className="crt-vignette" />
         <div className="crt-flicker" />
-      </div>
+      </div> */}
     </>
   )
 }
