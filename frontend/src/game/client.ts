@@ -20,7 +20,7 @@ class GameScene extends Phaser.Scene {
 
 	preload() {
 		// Inside your Phaser preload() function:
-		this.load.image('wooden-floor', 'assets/woodenfloor2.png');
+		this.load.image('wooden-floor', 'assets/floor.png');
 		this.load.image('highlight', 'assets/tilehighlight.png');
 	}
 
