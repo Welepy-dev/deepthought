@@ -2,10 +2,9 @@ import { Injectable, ConflictException, UnauthorizedException } from '@nestjs/co
 import { PrismaService } from '../prisma/prisma.service';
 import { SignupDto } from './dto/signup.dto';
 import { LoginDto } from './dto/login.dto';
-import * as bcrypt from 'bcrypt';
+import { randomBytes } from 'crypto';
 import { JwtService } from '@nestjs/jwt';
-
-import { v4 as uuid } from 'uuid';
+import * as bcrypt from 'bcrypt';
 
 @Injectable()
 export class AuthService {
@@ -59,13 +58,14 @@ export class AuthService {
       expiresIn: '15m',
     });
 
-    const refreshToken = uuid();
+    const refreshToken = randomBytes(64).toString('hex');
+    const refreshTokenHash = await bcrypt.hash(refreshToken, 10);
 
     await this.prisma.refreshToken.create({
       data: {
-        token: refreshToken,
+        tokenHash: refreshTokenHash,
         userId: user.id,
-        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 dias
+        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
       },
     });
 
