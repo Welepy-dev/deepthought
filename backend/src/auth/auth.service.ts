@@ -5,6 +5,8 @@ import { LoginDto } from './dto/login.dto';
 import { randomBytes } from 'crypto';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
+import * as nodemailer from 'nodemailer';
+import { SendOtpDto } from './dto/send-otp.dto';
 
 @Injectable()
 export class AuthService {
@@ -72,6 +74,37 @@ export class AuthService {
     return {
       accessToken,
       refreshToken,
+    };
+  }
+
+  async sendOtp(dto: SendOtpDto) {
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+
+    await this.prisma.emailOtp.create({
+      data: {
+        email: dto.email,
+        code,
+        expiresAt: new Date(Date.now() + 5 * 60 * 1000),
+      },
+    });
+
+    const transporter = nodemailer.createTransport({
+      service: 'gmail',
+      auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS,
+      },
+    });
+
+    await transporter.sendMail({
+      from: process.env.EMAIL_USER,
+      to: dto.email,
+      subject: 'Deepthought OTP Code',
+      text: `Your OTP code is: ${code}`,
+    });
+
+    return {
+      message: 'OTP sent successfully',
     };
   }
 }
