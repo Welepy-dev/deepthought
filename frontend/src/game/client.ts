@@ -18,53 +18,57 @@ class GameScene extends Phaser.Scene {
 	private offsetY = 0
 	private highlightTile!: Phaser.GameObjects.Image
 
-	preload() {
-		// Inside your Phaser preload() function:
-		this.load.image('wooden-floor', 'assets/floor.png');
-		this.load.image('highlight', 'assets/tilehighlight.png');
-		this.load.tilemapTiledJSON('map', 'assets/cluster/clusterV2');
-		//assets/cluster/clusterV2
-	}
+preload() {
+    this.load.image('highlight', 'assets/tilehighlight.png');
+    this.load.image('floors', 'assets/floors.png');
+    this.load.image('props',  'assets/props.png');
+    this.load.image('walls',  'assets/walls.png');
+    // Load the tmj as plain JSON, not a tilemap
+    this.load.json('map', 'assets/cluster/clusterV3.tmj');
+}
 
-	create() {
-	// Center the map on screen
-		this.offsetX = this.cameras.main.width / 2
-		this.offsetY = this.cameras.main.height / 3
-		
-		this.highlightTile = this.add.image(0, 0, 'highlight')
-		this.highlightTile.setVisible(false)
+create() {
+    this.offsetX = this.cameras.main.width / 2;
+    this.offsetY = this.cameras.main.height / 3;
 
-		this.input.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
-			const isoX = pointer.x - this.offsetX
-			const isoY = pointer.y - this.offsetY
-			let { x: tileX, y: tileY } = isoToCart(isoX, isoY)
-			
-			
-			if (tileX >= 0 && tileX < this.mapData[0].length && 
-				tileY >= 0 && tileY < this.mapData.length) {
-					console.log(`Clicked tile: (${tileX}, ${tileY}) - Type: ${this.mapData[tileY][tileX]}`)
-			}
-		})
+    // GID ranges from your .tmj tilesets block:
+    // floors: GID 1–4, props: GID 5–8, walls: GID 9+
+    const GID_TO_TEXTURE: Record<number, string> = {
+        1: 'floors', 2: 'floors', 3: 'floors', 4: 'floors',
+        5: 'props',  6: 'props',  7: 'props',  8: 'props',
+        9: 'walls',  10: 'walls', 11: 'walls', 12: 'walls',
+        13: 'walls', 14: 'walls',
+    };
 
-		for (let row = 0; row < this.mapData.length; row++) {
-			for (let col = 0; col < this.mapData[row].length; col++) {
-				const tileType = this.mapData[row][col]
-				const { x, y } = cartToIso(col, row)
+    const mapJson = this.cache.json.get('map');
 
-				const texture = tileType === 1 ? 'wooden-floor' : 'wooden-floor'
+    for (const layer of mapJson.layers) {
+        for (const chunk of layer.chunks) {
+            for (let i = 0; i < chunk.data.length; i++) {
+                const gid = chunk.data[i];
+                if (gid === 0) continue;
 
-				const tile = this.add.image(
-					x + this.offsetX,
-					y + this.offsetY,
-					texture
-				)
+                const texture = GID_TO_TEXTURE[gid];
+                if (!texture) continue;
 
-				// Set depth for correct layering
-				tile.setDepth(col + row)
-			}
-		}
+                // chunk.x/y are tile coords, i gives row/col within chunk
+                const col = chunk.x + (i % chunk.width);
+                const row = chunk.y + Math.floor(i / chunk.width);
 
-	}
+                const { x, y } = cartToIso(col, row);
+                const tile = this.add.image(
+                    x + this.offsetX,
+                    y + this.offsetY,
+                    texture
+                );
+                tile.setDepth(col + row);
+            }
+        }
+    }
+
+    this.highlightTile = this.add.image(0, 0, 'highlight');
+    this.highlightTile.setVisible(false);
+}
 
 	update(time: number, delta: number): void {
 		const worldX = this.input.activePointer.worldX - this.offsetX
