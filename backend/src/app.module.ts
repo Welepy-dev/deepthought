@@ -9,10 +9,26 @@ import { ResourcesModule } from './resources/resources.module';
 import { LeaderboardModule } from './leaderboard/leaderboard.module';
 import { FeedbackModule } from './feedback/feedback.module';
 import { AdminModule } from './admin/admin.module';
+import { ConfigModule } from '@nestjs/config';
 
 @Module({
-  imports: [AuthModule, UsersModule, AchivementsModule, ProjectsModule, ResourcesModule, LeaderboardModule, FeedbackModule, AdminModule],
+  imports: [
+    ConfigModule.forRoot({ //permite acessar variáveis do .env em qualquer lugar do backend
+      isGlobal: true,
+    }),
+
+    AuthModule,
+    UsersModule,
+    AchivementsModule,
+    ProjectsModule,
+    ResourcesModule,
+    LeaderboardModule,
+    FeedbackModule,
+    AdminModule
+  ],
+
   controllers: [AppController],
+
   providers: [AppService],
 })
 export class AppModule {}
