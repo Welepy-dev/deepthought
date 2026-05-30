@@ -10,6 +10,7 @@ import { LeaderboardModule } from './leaderboard/leaderboard.module';
 import { FeedbackModule } from './feedback/feedback.module';
 import { AdminModule } from './admin/admin.module';
 import { ConfigModule } from '@nestjs/config';
+import { PrismaModule } from './prisma/prisma.module';
 
 @Module({
   imports: [
@@ -24,7 +25,8 @@ import { ConfigModule } from '@nestjs/config';
     ResourcesModule,
     LeaderboardModule,
     FeedbackModule,
-    AdminModule
+    AdminModule,
+    PrismaModule,
   ],
 
   controllers: [AppController],
