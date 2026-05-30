@@ -49,7 +49,7 @@ class GameScene extends Phaser.Scene {
 			const isoPos = cartToIso(hoverX, hoverY);
 			this.highlight?.setPosition(isoPos.x + this.offsetX, isoPos.y + this.offsetY);
 			this.highlight?.setVisible(true);
-			this.highlight?.setDepth(0.5); // Ensure correct layering based on Y coordinate
+			this.highlight?.setDepth(0.5);
 		} else {
 			this.highlight?.setVisible(false);
 		}
