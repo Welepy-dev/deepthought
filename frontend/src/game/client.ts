@@ -17,7 +17,6 @@ class GameScene extends Phaser.Scene {
 		this.load.image("walls", "assets/tilesets/walls.png");
 		this.load.image("plusButton", "assets/buttons/plusButton.png");
 		this.load.image("minusButton", "assets/buttons/minusButton.png");
-		this.load.image("dragCursor", "assets/buttons/dragCursor.png");
 		this.load.image("highlight", "assets/highlight.png");
 		this.load.tilemapTiledJSON("map", "assets/cluster/map1.tmj");
 	}
@@ -32,10 +31,11 @@ class GameScene extends Phaser.Scene {
 
 		const { map } = setupMap(this, this.offsetX, this.offsetY);
 		this.map = map;
-		setupCamera(this, map);
+		setupCamera(this, map, this.offsetX, this.offsetY);
 		setupInput(this);
 		setupUI(this, this.cameras.main);
-		this.highlight = this.add.image(0, 0, 'highlight');
+		this.highlight = this.add.image(0, 0, 'highlight').setOrigin(0, 0);
+	
 		this.highlight.setVisible(false);
 	}
 
@@ -49,7 +49,7 @@ class GameScene extends Phaser.Scene {
 			const isoPos = cartToIso(hoverX, hoverY);
 			this.highlight?.setPosition(isoPos.x + this.offsetX, isoPos.y + this.offsetY);
 			this.highlight?.setVisible(true);
-			this.highlight?.setDepth(hoverY + hoverX + 0.5); // Ensure correct layering based on Y coordinate
+			this.highlight?.setDepth(0.5); // Ensure correct layering based on Y coordinate
 		} else {
 			this.highlight?.setVisible(false);
 		}
