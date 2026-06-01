@@ -13,10 +13,10 @@ export class FortyTwoStrategy extends PassportStrategy(
       authorizationURL: 'https://api.intra.42.fr/oauth/authorize',
       tokenURL: 'https://api.intra.42.fr/oauth/token',
 
-      clientID: config.get('FORTYTWO_CLIENT_ID'),
-      clientSecret: config.get('FORTYTWO_CLIENT_SECRET'),
+      clientID: config.get('FORTY_TWO_CLIENT_ID'),
+      clientSecret: config.get('FORTY_TWO_CLIENT_SECRET'),
 
-      callbackURL: config.get('FORTYTWO_CALLBACK'),
+      callbackURL: config.get('FORTY_TWO_CALLBACK'),
 
       scope: [],
     });
