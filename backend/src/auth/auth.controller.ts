@@ -7,6 +7,8 @@ import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { SendOtpDto } from './dto/send-otp.dto';
 import { VerifyOtpDto } from './dto/verify-otp.dto';
 
+import { Request } from '@nestjs/common';
+
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
@@ -21,10 +23,10 @@ export class AuthController {
     return this.authService.login(dto);
   }
 
-  @Get('profile')
   @UseGuards(JwtAuthGuard)
-  profile() {
-    return { message: 'You are authenticated' };
+  @Get('profile')
+  getProfile(@Request() req) {
+    return req.user;
   }
 
   @Post('send-otp')

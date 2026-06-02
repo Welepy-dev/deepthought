@@ -34,7 +34,6 @@ export default function OTPEmail() {
 					otp,
 				}),
 			})
-
 			const data = await response.json()
 
 			if (!response.ok) {

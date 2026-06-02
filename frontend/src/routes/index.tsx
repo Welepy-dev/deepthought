@@ -46,7 +46,11 @@ export function AppRouter() {
 
 			<Route
 				path="/Game"
-				element={<div>GAME ROUTE WORKS</div>}
+				element={
+					<ProtectedRoute>
+						<PhaserGame />
+					</ProtectedRoute>
+				}
 			/>
 
 		</Routes>
