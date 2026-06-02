@@ -5,55 +5,38 @@ import {
 import { JwtService } from '@nestjs/jwt';
 
 import { PrismaService } from '../prisma/prisma.service';
+import { UsersService } from 'src/users/users.service';
 
 @Injectable()
 export class AuthService {
-
   constructor(
     private prisma: PrismaService,
     private jwtService: JwtService,
+    private usersService: UsersService,
   ) {}
 
   async login42(accessToken: string) {
-
-    const response = await fetch(
-      'https://api.intra.42.fr/v2/me',
-      {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-        },
-      },
-    );
-
-    const profile = await response.json();
-
-    let user = await this.prisma.user.findUnique({
-      where: {
-        fortyTwoId: profile.id,
+    const response = await fetch('https://api.intra.42.fr/v2/me', {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
       },
     });
 
+    const profile = await response.json();
+
+    let user = await this.usersService.findBy42Id(profile.id);
+
     if (!user) {
-      user = await this.prisma.user.create({
-        data: {
-          fortyTwoId: profile.id,
-          login: profile.login,
-          email: profile.email,
-          displayName: profile.displayname,
-          avatar: profile.image.link,
-        },
-      });
+      user = await this.usersService.createFrom42(profile);
     }
 
-    const payload = {
+    const jwt = await this.jwtService.signAsync({
       sub: user.id,
-    };
-
-    const access_token =
-      await this.jwtService.signAsync(payload);
+      role: user.role,
+    });
 
     return {
-      access_token,
+      access_token: jwt,
       user,
     };
   }
