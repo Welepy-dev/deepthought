@@ -2,7 +2,14 @@ import { refreshToken } from './refresh';
 import { logout } from '../auth/logout';
 
 export async function apiFetch(url: string, options: RequestInit = {}) {
-  let response = await fetch(url, options);
+  const token = localStorage.getItem('token');
+  const headers = new Headers(options.headers);
+
+  if (token) {
+    headers.set('Authorization', `Bearer ${token}`);
+  }
+
+  let response = await fetch(url, { ...options, headers });
 
   if (response.status !== 401) {
     return response;
@@ -16,5 +23,11 @@ export async function apiFetch(url: string, options: RequestInit = {}) {
     return response;
   }
 
-  return fetch(url, options);
+  const newToken = localStorage.getItem('token');
+
+  if (newToken) {
+    headers.set('Authorization', `Bearer ${newToken}`);
+  }
+
+  return fetch(url, { ...options, headers });
 }

@@ -5,8 +5,6 @@ import { LoginDto } from './dto/login.dto';
 import { randomBytes } from 'crypto';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
-import * as nodemailer from 'nodemailer';
-import { SendOtpDto } from './dto/send-otp.dto';
 import { MailerService } from '@nestjs-modules/mailer';
 import { VerifyOtpDto } from './dto/verify-otp.dto';
 
@@ -43,40 +41,10 @@ export class AuthService {
   }
 
   async login(dto: LoginDto) {
-    const user = await this.prisma.user.findUnique({
-      where: { email: dto.email },
-    });
-
-    if (!user) {
-      throw new UnauthorizedException('Invalid credentials');
-    }
-
-    const passwordMatch = await bcrypt.compare(dto.password, user.password);
-
-    if (!passwordMatch) {
-      throw new UnauthorizedException('Invalid credentials');
-    }
-
-    const payload = { sub: user.id, email: user.email };
-
-    const accessToken = this.jwtService.sign(payload, {
-      expiresIn: '15m',
-    });
-
-    const refreshToken = randomBytes(64).toString('hex');
-    const refreshTokenHash = await bcrypt.hash(refreshToken, 10);
-
-    await this.prisma.refreshToken.create({
-      data: {
-        tokenHash: refreshTokenHash,
-        userId: user.id,
-        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-      },
-    });
-
+    await this.createAndSendOtp(dto.email);
     return {
-      accessToken,
-      refreshToken,
+      message: 'OTP sent',
+      requires2fa: true,
     };
   }
 
@@ -87,8 +55,12 @@ export class AuthService {
     return { message: 'Logged out successfully' }
   }
 
-  async sendOtp(email: string) {    
+  private async createAndSendOtp(email: string) {
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
+
+    await this.prisma.oTPCode.deleteMany({
+      where: { email },
+    });
 
     await this.prisma.oTPCode.create({
       data: {
@@ -104,10 +76,6 @@ export class AuthService {
       subject: 'Deepthought OTP',
       text: `Your OTP code is: ${otp}`,
     });
-
-    return {
-      message: 'OTP sent',
-    };
   }
 
   async verifyOtp(dto: VerifyOtpDto) {
@@ -151,36 +119,62 @@ export class AuthService {
       email: user.email,
     };
 
-    const accessToken = this.jwtService.sign(payload, {
-      expiresIn: '15m',
+    const accessToken = this.jwtService.sign(payload, { expiresIn: '15m' });
+    const refreshToken = randomBytes(64).toString('hex');
+    const refreshTokenHash = await bcrypt.hash(refreshToken, 10);
+
+    await this.prisma.refreshToken.create({
+      data: {
+        tokenHash: refreshTokenHash,
+        userId: user.id,
+        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+      },
     });
 
     return {
       accessToken,
+      refreshToken,
     };
   }
 
-  async refresh(refreshToken: string, userId: string) {
-    const storedToken = await this.prisma.refreshToken.findFirst({
-      where: { userId },
+  async refresh(refreshToken: string) {
+    const storedTokens = await this.prisma.refreshToken.findMany({
+      where: {
+        revoked: false,
+        expiresAt: {
+          gt: new Date(),
+        },
+      },
+      include: {
+        user: true,
+      },
     })
 
+    const storedToken = await this.findMatchingRefreshToken(refreshToken, storedTokens);
+
     if (!storedToken) {
-      throw new UnauthorizedException('Refresh token not found')
-    }
-
-    const isValid = await bcrypt.compare(refreshToken, storedToken.tokenHash)
-
-    if (!isValid) {
       throw new UnauthorizedException('Invalid refresh token')
     }
 
-    if (storedToken.expiresAt < new Date()) {
-      throw new UnauthorizedException('Refresh token expired')
-    }
+    await this.prisma.refreshToken.update({
+      where: { id: storedToken.id },
+      data: { revoked: true },
+    });
+
+    const newRefreshToken = randomBytes(64).toString('hex');
+    const newRefreshTokenHash = await bcrypt.hash(newRefreshToken, 10);
+
+    await this.prisma.refreshToken.create({
+      data: {
+        tokenHash: newRefreshTokenHash,
+        userId: storedToken.userId,
+        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+      },
+    });
 
     const payload = {
-      sub: userId,
+      sub: storedToken.userId,
+      email: storedToken.user.email,
     }
 
     const newAccessToken = this.jwtService.sign(payload, {
@@ -189,6 +183,24 @@ export class AuthService {
 
     return {
       accessToken: newAccessToken,
+      refreshToken: newRefreshToken,
     }
+  }
+
+  private async findMatchingRefreshToken(
+    refreshToken: string,
+    storedTokens: Array<{
+      id: string;
+      tokenHash: string;
+      userId: string;
+      user: { email: string };
+    }>,
+  ) {
+    for (const storedToken of storedTokens) {
+      if (await bcrypt.compare(refreshToken, storedToken.tokenHash)) {
+        return storedToken;
+      }
+    }
+    return null;
   }
 }

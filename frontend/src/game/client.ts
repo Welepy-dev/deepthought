@@ -64,7 +64,7 @@ class GameScene extends Phaser.Scene {
 
 	}
 
-	update(time: number, delta: number): void {
+	update(_time: number, _delta: number): void {
 		const worldX = this.input.activePointer.worldX - this.offsetX
 		const worldY = this.input.activePointer.worldY - this.offsetY
 		const { x: hoverX, y: hoverY } = isoToCart(worldX, worldY)

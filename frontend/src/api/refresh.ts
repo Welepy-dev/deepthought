@@ -15,6 +15,7 @@ export async function refreshToken() {
 
   if (response.ok) {
     localStorage.setItem('token', data.accessToken)
+    localStorage.setItem('refreshToken', data.refreshToken)
     return true
   }
 

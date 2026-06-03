@@ -42,6 +42,8 @@ export default function OTPEmail() {
 			}
 
 			localStorage.setItem('token', data.accessToken)
+			localStorage.setItem('refreshToken', data.refreshToken)
+			localStorage.removeItem('pendingEmail')
 
 			navigate('/Game')
 

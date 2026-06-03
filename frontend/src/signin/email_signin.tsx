@@ -6,10 +6,11 @@ export default function EmailSignIn() {
 
 	const [email, setEmail] = useState('')
 	const [error, setError] = useState('')
+	const [loading, setLoading] = useState(false)
 
 	const navigate = useNavigate()
 
-	async function handleSendOtp() {
+	async function handleSubmit() {
 
 		if (!email.includes('@')) {
 			setError('Invalid email')
@@ -17,8 +18,9 @@ export default function EmailSignIn() {
 		}
 
 		try {
+			setLoading(true)
 
-			const response = await fetch('http://localhost:3000/auth/send-otp', {
+			const response = await fetch('http://localhost:3000/auth/login', {
 				method: 'POST',
 				headers: {
 					'Content-Type': 'application/json',
@@ -29,7 +31,7 @@ export default function EmailSignIn() {
 			const data = await response.json()
 
 			if (!response.ok) {
-				setError(data.message || 'Failed to send OTP')
+				setError(data.message || 'Failed to sign in')
 				return
 			}
 
@@ -39,11 +41,13 @@ export default function EmailSignIn() {
 
 		} catch {
 			setError('Server error')
+		} finally {
+			setLoading(false)
 		}
 	}
 
 	return (
-		<div className="flex flex-col items-center w-[500px] h-96 bg-neutral_contrast border-b-8 border-r-8 border-l-4 border-t-4 border-black">
+		<div className="flex flex-col items-center w-[500px] min-h-[480px] bg-neutral_contrast border-b-8 border-r-8 border-l-4 border-t-4 border-black px-8 py-6">
 
 			<div className='flex flex-col items-center'>
 				<img src={emailIcon} alt="Email icon" className='w-24 h-auto' />
@@ -60,7 +64,7 @@ export default function EmailSignIn() {
 					setError('')
 				}}
 				placeholder='johndoe@mail.com'
-				className="text-center px-16 py-2 text-sm font-pressStart focus:outline-none border-b-8 mt-4 border-r-8 border-l-4 border-t-4 border-black"
+				className="w-full text-center px-4 py-2 text-sm font-pressStart focus:outline-none border-b-8 mt-4 border-r-8 border-l-4 border-t-4 border-black"
 				type="email"
 			/>
 
@@ -70,18 +74,18 @@ export default function EmailSignIn() {
 
 			{
 				error &&
-				<p className='text-red-500 text-xs font-pressStart mt-4'>
+				<p className='text-red-500 text-xs font-pressStart mt-4 text-center'>
 					{error}
 				</p>
 			}
 
 			<button
-				onClick={handleSendOtp}
+				onClick={handleSubmit}
+				disabled={loading}
 				className="mt-6 px-6 py-3 bg-black text-white font-pressStart text-xs"
 			>
-				Send OTP code
+				{loading ? 'Loading...' : 'Send OTP code'}
 			</button>
-
 		</div>
 	)
 }

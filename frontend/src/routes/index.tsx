@@ -53,6 +53,11 @@ export function AppRouter() {
 				}
 			/>
 
+			<Route
+				path="/GameDebug"
+				element={<PhaserGame />}
+			/>
+
 		</Routes>
 	)
 }
