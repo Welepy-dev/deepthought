@@ -80,7 +80,14 @@ export class AuthService {
     };
   }
 
-  async sendOtp(email: string) {
+  async logout(userId: string) {
+    await this.prisma.refreshToken.deleteMany({
+      where: { userId },
+    })
+    return { message: 'Logged out successfully' }
+  }
+
+  async sendOtp(email: string) {    
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
 
     await this.prisma.oTPCode.create({
@@ -151,5 +158,37 @@ export class AuthService {
     return {
       accessToken,
     };
+  }
+
+  async refresh(refreshToken: string, userId: string) {
+    const storedToken = await this.prisma.refreshToken.findFirst({
+      where: { userId },
+    })
+
+    if (!storedToken) {
+      throw new UnauthorizedException('Refresh token not found')
+    }
+
+    const isValid = await bcrypt.compare(refreshToken, storedToken.tokenHash)
+
+    if (!isValid) {
+      throw new UnauthorizedException('Invalid refresh token')
+    }
+
+    if (storedToken.expiresAt < new Date()) {
+      throw new UnauthorizedException('Refresh token expired')
+    }
+
+    const payload = {
+      sub: userId,
+    }
+
+    const newAccessToken = this.jwtService.sign(payload, {
+      expiresIn: '15m',
+    })
+
+    return {
+      accessToken: newAccessToken,
+    }
   }
 }

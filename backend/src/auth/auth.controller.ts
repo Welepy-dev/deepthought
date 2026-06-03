@@ -38,4 +38,15 @@ export class AuthController {
   verifyOtp(@Body() dto: VerifyOtpDto) {
     return this.authService.verifyOtp(dto);
   }
+
+  @Post('refresh')
+  refresh(@Body() body: { refreshToken: string }, @Request() req) {
+    return this.authService.refresh(body.refreshToken, req.user.userId)
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('logout')
+  logout(@Request() req) {
+    return this.authService.logout(req.user.userId)
+  }
 }
