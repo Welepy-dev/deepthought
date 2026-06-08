@@ -2,7 +2,9 @@ import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import { ConfigService } from '@nestjs/config';
+import type { Role } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
+import type { JwtUser } from '../interfaces/jwt-user.interface';
 
 /**
  * Interface que representa o payload do token JWT gerado pelo AuthService.
@@ -11,7 +13,7 @@ export interface JwtPayload {
   /** ID interno do utilizador (cuid) */
   sub: string;
   /** Role do utilizador no momento em que o JWT foi gerado */
-  role: string;
+  role?: Role;
   /** Token OAuth2 da sessão 42 (necessário para chamadas à API 42) */
   accessToken?: string;
 }
@@ -36,8 +38,24 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
       // Rejeita tokens expirados automaticamente
       ignoreExpiration: false,
       // Secret usado para assinar e verificar o token
-      secretOrKey: config.get<string>('JWT_SECRET'),
+      secretOrKey: JwtStrategy.getJwtSecret(config),
     });
+  }
+
+  /**
+   * Lê e valida o secret JWT durante o arranque da aplicação.
+   *
+   * Sem este valor, a aplicação não deve arrancar, porque não conseguiria
+   * verificar a assinatura dos tokens com segurança.
+   */
+  private static getJwtSecret(config: ConfigService): string {
+    const secret = config.get<string>('JWT_SECRET');
+
+    if (!secret) {
+      throw new Error('JWT_SECRET environment variable is required');
+    }
+
+    return secret;
   }
 
   /**
@@ -46,8 +64,21 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
    * O objeto retornado é adicionado ao req.user pelo JwtAuthGuard.
    * @param payload Payload decodificado do JWT
    */
-  async validate(payload: JwtPayload) {
-    // Busca o utilizador para garantir que ainda existe e não foi banido
+  async validate(payload: JwtPayload): Promise<JwtUser> {
+    /**
+     * O JWT só é útil se tiver subject.
+     * Mesmo que a assinatura seja válida, um token sem `sub` não identifica
+     * nenhum utilizador da aplicação.
+     */
+    if (!payload.sub) {
+      throw new UnauthorizedException('Invalid JWT payload');
+    }
+
+    /**
+     * Busca o utilizador na base de dados para obter role e ban actualizados.
+     * Não confiamos no role guardado no JWT, porque o admin pode alterar roles
+     * ou banir utilizadores depois de o token ter sido emitido.
+     */
     const user = await this.prisma.user.findUnique({
       where: { id: payload.sub },
       select: {
@@ -63,8 +94,18 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
       throw new UnauthorizedException('User no longer exists');
     }
 
-    // Retorna o user com o accessToken para ser usado nos controllers/services
-    // (necessário para chamadas à API 42 após autenticação)
+    /**
+     * Banimento é uma falha de autenticação no fluxo pedido.
+     * Isto impede que controllers e guards seguintes sejam executados.
+     */
+    if (user.isBanned) {
+      throw new UnauthorizedException('User account is banned');
+    }
+
+    /**
+     * Retorna o objecto normalizado que será atribuído a `request.user`.
+     * O access token da 42 é preservado apenas quando vinha no JWT interno.
+     */
     return {
       sub: user.id,
       role: user.role,
