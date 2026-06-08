@@ -1,4 +1,5 @@
 import {
+  ExecutionContext,
   Injectable,
   UnauthorizedException,
 } from '@nestjs/common';
@@ -31,11 +32,22 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
    *
    * O retorno deste método é atribuído a `request.user`.
    */
-  handleRequest(
+  handleRequest<TUser = JwtUser>(
     err: Error | null,
     user: JwtUser | false | null,
     info: Error | null,
-  ): JwtUser {
+    context: ExecutionContext,
+    status?: unknown,
+  ): TUser {
+    /**
+     * Estes parâmetros fazem parte da assinatura oficial do Passport guard.
+     * Não são necessários para a regra actual, mas mantê-los preserva
+     * compatibilidade com a classe base `AuthGuard('jwt')`.
+     */
+    void info;
+    void context;
+    void status;
+
     /**
      * Sem user válido, o request não está autenticado.
      * Mantemos a mensagem genérica para não revelar detalhes sobre tokens.
@@ -57,6 +69,6 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
      * Devolver o `JwtUser` faz com que o Nest/Passport o exponha como
      * `request.user` para controllers, decorators e guards seguintes.
      */
-    return user;
+    return user as TUser;
   }
 }

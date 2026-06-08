@@ -21,7 +21,7 @@ type JwtUserProperty = keyof JwtUser;
  */
 const CurrentUserDecorator = createParamDecorator<
   JwtUserProperty | undefined,
-  ExecutionContext
+  JwtUser | JwtUser[JwtUserProperty] | undefined
 >((data, context): JwtUser | JwtUser[JwtUserProperty] | undefined => {
   /**
    * Obtém o request Express tipado.
