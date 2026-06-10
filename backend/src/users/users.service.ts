@@ -265,29 +265,13 @@ export class UsersService {
         displayName: profile.displayName,
         avatar: profile.avatar,
         campus: profile.campus,
+        coalition: profile.coalition,
         level: profile.level,
         evalPoints: profile.evalPoints,
         xp: Math.round(profile.level * 1000),
         isEmailVerified: false, // Primeiro login deve validar OTP antes de receber JWT
         lastSyncAt: new Date(),
         lastSeenAt: new Date(),
-      },
-    });
-  }
-
-  /**
-   * Método de compatibilidade — usado pelo AuthService existente.
-   * @deprecated Use createFrom42Profile
-   */
-  async createFrom42(profile: any) {
-    return this.prisma.user.create({
-      data: {
-        fortyTwoId: profile.id,
-        login: profile.login,
-        email: profile.email,
-        displayName: profile.displayname,
-        avatar: profile.image?.link,
-        campus: profile.campus?.[0]?.name,
       },
     });
   }

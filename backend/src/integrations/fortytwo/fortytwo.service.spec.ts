@@ -1,15 +1,17 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { FortytwoService } from './fortytwo.service';
+import { FortyTwoService } from './fortytwo.service';
 
-describe('FortytwoService', () => {
-  let service: FortytwoService;
+describe('FortyTwoService', () => {
+  let service: FortyTwoService;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
-      providers: [FortytwoService],
+      /** Provider real é suficiente porque o teste apenas valida DI básica. */
+      providers: [FortyTwoService],
     }).compile();
 
-    service = module.get<FortytwoService>(FortytwoService);
+    /** Obtém a instância usando o nome exportado real do serviço. */
+    service = module.get<FortyTwoService>(FortyTwoService);
   });
 
   it('should be defined', () => {

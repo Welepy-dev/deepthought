@@ -26,6 +26,8 @@ import { Prisma, ProjectStatus } from '@prisma/client';
 @Injectable()
 export class SyncService {
   private readonly logger = new Logger(SyncService.name);
+  /** Mapa em memória que evita duas sincronizações simultâneas para o mesmo User. */
+  private readonly inFlightSyncs = new Map<string, Promise<void>>();
 
   constructor(
     /** Serviço de acesso à base de dados via Prisma */
@@ -45,37 +47,69 @@ export class SyncService {
    * @param accessToken Token OAuth2 da sessão 42
    */
   async syncUser(userId: string, accessToken: string): Promise<void> {
-    this.logger.log(`Starting sync for user ${userId}`);
+    /** Serializa syncs do mesmo utilizador para evitar writes concorrentes e API duplicada. */
+    return this.runExclusiveSync(userId, async () => {
+      this.logger.log(`Starting sync for user ${userId}`);
 
-    // Verifica se o utilizador existe antes de sincronizar
-    const user = await this.prisma.user.findUnique({ where: { id: userId } });
-    if (!user) {
-      throw new NotFoundException(`User ${userId} not found`);
-    }
+      /** Confirma que o utilizador existe e guarda fortyTwoId para validar o token. */
+      const user = await this.prisma.user.findUnique({
+        /** Usa o ID interno vindo do JWT ou do AuthService. */
+        where: { id: userId },
+        /** Selecciona apenas o necessário para validar consistência. */
+        select: { id: true, fortyTwoId: true },
+      });
 
-    // Busca todos os dados do utilizador na API 42 de uma vez
-    const profile = await this.fortyTwoService.getMe(accessToken);
+      if (!user) {
+        throw new NotFoundException(`User ${userId} not found`);
+      }
 
-    this.logger.log(`Syncing profile for login: ${profile.login}`);
+      /** Endpoint manual precisa carregar o perfil actual da API 42. */
+      const profile = await this.fortyTwoService.getMe(accessToken);
 
-    // Executa a sincronização numa transação para garantir consistência
-    await this.prisma.$transaction(async (tx) => {
-      // 1. Atualiza dados do utilizador com as informações mais recentes da 42
-      await this.updateUserData(tx, userId, profile);
+      /** Evita sincronizar dados de outro aluno se o token 42 não corresponde ao User. */
+      if (profile.fortyTwoId !== user.fortyTwoId) {
+        throw new NotFoundException(`User ${userId} does not match 42 token`);
+      }
 
-      // 2. Sincroniza todos os projetos do utilizador
-      await this.syncProjects(tx, userId, profile.projects);
+      /** Aplica no Prisma o perfil já normalizado pelo FortyTwoService. */
+      await this.persistMappedProfile(userId, profile);
     });
+  }
 
-    // 3. Verifica conquistas APÓS a transação (não bloqueia o sync se falhar)
-    try {
-      await this.achievementsService.checkAchievements(userId);
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      this.logger.error(`Achievement check failed for user ${userId}: ${message}`);
-    }
+  /**
+   * Sincroniza usando um perfil da 42 já carregado pelo fluxo OAuth.
+   *
+   * Isto evita uma segunda chamada a /v2/me e /v2/users/:id/coalitions durante
+   * o login, mantendo o sync automático sem duplicar requests para a API 42.
+   */
+  async syncFromProfile(
+    userId: string,
+    profile: MappedFortyTwoProfile,
+  ): Promise<void> {
+    /** Usa o mesmo lock de syncUser para não correr em paralelo com POST /sync/me. */
+    return this.runExclusiveSync(userId, async () => {
+      this.logger.log(`Starting profile-based sync for user ${userId}`);
 
-    this.logger.log(`Sync completed for user ${userId}`);
+      /** Valida existência antes de escrever relações e projectos. */
+      const user = await this.prisma.user.findUnique({
+        /** O ID interno vem do user criado/encontrado no AuthService. */
+        where: { id: userId },
+        /** Verifica também a correspondência com a conta 42 mapeada. */
+        select: { id: true, fortyTwoId: true },
+      });
+
+      if (!user) {
+        throw new NotFoundException(`User ${userId} not found`);
+      }
+
+      /** Protecção contra gravar dados de uma conta 42 diferente no User local. */
+      if (profile.fortyTwoId !== user.fortyTwoId) {
+        throw new NotFoundException(`User ${userId} does not match 42 profile`);
+      }
+
+      /** Persiste exactamente os dados já extraídos no OAuth. */
+      await this.persistMappedProfile(userId, profile);
+    });
   }
 
   // ─────────────────────────────────────────────────────────
@@ -106,6 +140,8 @@ export class SyncService {
         avatar: profile.avatar,
         /** Campus primário extraído do payload da 42. */
         campus: profile.campus,
+        /** Coalition obtida em /v2/users/:id/coalitions com fallback null. */
+        coalition: profile.coalition,
         /** Nível real do cursus principal da 42. */
         level: profile.level,
         /** Pontos de avaliação usados pela conquista EVALUATOR. */
@@ -193,5 +229,66 @@ export class SyncService {
     }
 
     this.logger.debug(`Synced ${projects.length} projects for user ${userId}`);
+  }
+
+  /**
+   * Persiste o perfil mapeado e dispara achievements depois de a transação fechar.
+   *
+   * Mantém o fluxo comum entre sync automático do login e sync manual.
+   */
+  private async persistMappedProfile(
+    userId: string,
+    profile: MappedFortyTwoProfile,
+  ): Promise<void> {
+    this.logger.log(`Syncing profile for login: ${profile.login}`);
+
+    /** Transação garante que User e UserProject ficam consistentes entre si. */
+    await this.prisma.$transaction(async (tx) => {
+      /** Actualiza métricas e dados públicos do User. */
+      await this.updateUserData(tx, userId, profile);
+
+      /** Faz upsert do catálogo de Project e da relação UserProject. */
+      await this.syncProjects(tx, userId, profile.projects);
+    });
+
+    /** Conquistas são verificadas depois para não reverter o sync se notificações falharem. */
+    try {
+      await this.achievementsService.checkAchievements(userId);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      this.logger.error(`Achievement check failed for user ${userId}: ${message}`);
+    }
+
+    this.logger.log(`Sync completed for user ${userId}`);
+  }
+
+  /**
+   * Executa uma sincronização por utilizador de cada vez.
+   *
+   * Se outro sync do mesmo User já está activo, devolve a mesma Promise para
+   * evitar chamadas paralelas à API da 42 e updates Prisma concorrentes.
+   */
+  private runExclusiveSync(
+    userId: string,
+    task: () => Promise<void>,
+  ): Promise<void> {
+    /** Reutiliza sync em progresso em vez de iniciar outro trabalho igual. */
+    const existingSync = this.inFlightSyncs.get(userId);
+
+    if (existingSync) {
+      this.logger.debug(`Reusing in-flight sync for user ${userId}`);
+      return existingSync;
+    }
+
+    /** Guarda a Promise imediatamente para bloquear chamadas concorrentes. */
+    const syncPromise = task().finally(() => {
+      /** Remove o lock quando termina, com sucesso ou erro. */
+      this.inFlightSyncs.delete(userId);
+    });
+
+    /** Regista a sincronização activa para este User. */
+    this.inFlightSyncs.set(userId, syncPromise);
+
+    return syncPromise;
   }
 }

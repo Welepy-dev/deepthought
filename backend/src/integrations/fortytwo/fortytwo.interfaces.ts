@@ -73,6 +73,8 @@ export interface FortyTwoCoalition {
   color: string;
   score: number;
   user_id: number;
+  /** Alguns payloads de /users/:id/coalitions incluem cursus_id; usamos quando existir. */
+  cursus_id?: number;
 }
 
 /** Resposta completa do endpoint /v2/me da API 42 */
@@ -109,6 +111,8 @@ export interface MappedFortyTwoProfile {
   displayName: string;
   avatar: string | null;
   campus: string | null;
+  /** Nome/slug normalizado da coalition da 42, ou null quando a API não devolve uma. */
+  coalition: string | null;
   level: number;
   evalPoints: number;
   projects: MappedProject[];

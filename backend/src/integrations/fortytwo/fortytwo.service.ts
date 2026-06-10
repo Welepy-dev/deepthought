@@ -40,33 +40,56 @@ export class FortyTwoService {
     // Busca o perfil completo — inclui campus, cursus_users e projects_users
     const profile = await this.fetchFromApi<FortyTwoProfile>('/me', accessToken);
 
-    // Busca coligação separadamente (endpoint diferente)
-    const coalition = await this.getCoalition(profile.id, accessToken);
-
     // Mapeia o perfil bruto da API para o DTO interno
-    return this.mapProfile(profile, coalition);
+    return this.mapProfile(profile, await this.getCoalition(profile, accessToken));
   }
 
   /**
    * Busca a coligação do utilizador.
    * Retorna null se o utilizador não tiver coligação.
-   * @param userId ID numérico do utilizador na 42
+   * @param profile Perfil bruto da 42, usado para escolher o cursus principal
    * @param accessToken Token OAuth2
    */
   async getCoalition(
-    userId: number,
+    profile: FortyTwoProfile,
     accessToken: string,
   ): Promise<FortyTwoCoalition | null> {
     try {
+      /** Endpoint oficial da API 42 para obter as coalitions de um utilizador. */
       const coalitions = await this.fetchFromApi<FortyTwoCoalition[]>(
-        `/users/${userId}/coalitions`,
+        `/users/${profile.id}/coalitions`,
         accessToken,
       );
-      // Retorna a primeira coligação encontrada (cada utilizador tem apenas uma)
-      return coalitions.length > 0 ? coalitions[0] : null;
-    } catch {
-      // Utilizador sem coligação não é um erro crítico
-      this.logger.warn(`No coalition found for user ${userId}`);
+
+      /** Sem dados da API significa que este utilizador ainda não tem coalition. */
+      if (coalitions.length === 0) {
+        return null;
+      }
+
+      /** Preferimos a coalition do cursus principal para não gravar dados de piscine. */
+      const mainCursus =
+        profile.cursus_users.find((c) => c.cursus_id === this.MAIN_CURSUS_ID) ??
+        profile.cursus_users[0] ??
+        null;
+
+      /** Se a API enviar cursus_id, escolhemos a coalition correspondente ao cursus usado no sync. */
+      const coalitionForMainCursus = coalitions.find(
+        (coalition) =>
+          coalition.cursus_id !== undefined &&
+          coalition.cursus_id === mainCursus?.cursus_id,
+      );
+
+      /** Fallback seguro: a API antiga pode não enviar cursus_id neste endpoint. */
+      return coalitionForMainCursus ?? coalitions[0];
+    } catch (error) {
+      /** Erros de autenticação não devem ser mascarados como "sem coalition". */
+      if (error instanceof UnauthorizedException) {
+        throw error;
+      }
+
+      /** Utilizador sem coalition, ou endpoint sem dados, não bloqueia o login/sync. */
+      const message = error instanceof Error ? error.message : String(error);
+      this.logger.warn(`No coalition found for user ${profile.id}: ${message}`);
       return null;
     }
   }
@@ -94,8 +117,11 @@ export class FortyTwoService {
     // Extrai o campus primário do utilizador
     const primaryCampus = this.extractPrimaryCampus(profile);
 
-    // Mapeia os projetos do cursus principal
-    const projects = this.mapProjects(profile.projects_users);
+    /** Normaliza coalition para um texto estável e seguro para guardar no User. */
+    const coalitionName = coalition?.name ?? coalition?.slug ?? null;
+
+    // Mapeia apenas projetos do cursus usado para nível/XP, evitando misturar piscine.
+    const projects = this.mapProjects(profile.projects_users, mainCursus?.cursus_id);
 
     return {
       fortyTwoId: profile.id,
@@ -104,6 +130,7 @@ export class FortyTwoService {
       displayName: profile.displayname || profile.usual_full_name,
       avatar: profile.image?.link ?? null,
       campus: primaryCampus,
+      coalition: coalitionName,
       level: mainCursus?.level ?? 0,
       evalPoints: profile.correction_point ?? 0,
       projects,
@@ -133,10 +160,18 @@ export class FortyTwoService {
    * Converte o status da API para o formato interno e filtra projetos relevantes.
    * @param projectsUsers Lista de projetos do utilizador
    */
-  private mapProjects(projectsUsers: FortyTwoProjectUser[]): MappedProject[] {
+  private mapProjects(
+    projectsUsers: FortyTwoProjectUser[],
+    cursusId?: number,
+  ): MappedProject[] {
     /** Filtra apenas projetos com slug válido para ignorar entradas internas da 42. */
     return projectsUsers
-      .filter((pu) => pu.project?.slug)
+      .filter(
+        (pu) =>
+          pu.project?.slug &&
+          /** Quando há cursus conhecido, sincronizamos só projectos desse cursus. */
+          (cursusId === undefined || pu.cursus_ids.includes(cursusId)),
+      )
       .map((pu) => ({
         /** Slug estável da API 42 usado como chave única no Prisma Project. */
         slug: pu.project.slug,

@@ -52,7 +52,7 @@ export class LeaderboardService {
       this.prisma.user.count({ where }),
     ]);
 
-    // Calcula a posição do utilizador autenticado no ranking global
+    // Calcula a posição do utilizador autenticado no ranking global com o mesmo desempate da lista.
     const userPosition = await this.getUserPosition(currentUserId, 'xp');
 
     // Adiciona posição sequencial a cada entrada do ranking
@@ -110,7 +110,7 @@ export class LeaderboardService {
       `,
     ]);
 
-    // Busca os dados completos dos utilizadores no ranking
+    // Busca os dados completos dos utilizadores no ranking numa única query.
     const userIds = rankingRaw.map((r) => r.userId);
     const users = await this.prisma.user.findMany({
       where: { id: { in: userIds } },
@@ -126,9 +126,13 @@ export class LeaderboardService {
       },
     });
 
-    // Combina os dados de utilizador com o count de conquistas e posição
+    /** Mapa evita find() por linha e preserva a ordem calculada pela raw query. */
+    const usersById = new Map(users.map((user) => [user.id, user]));
+
+    // Combina os dados de utilizador com o count de conquistas e posição.
     const ranked = rankingRaw.map((r, index) => {
-      const user = users.find((u) => u.id === r.userId);
+      /** A query base já filtra users válidos, mas o fallback mantém a resposta defensiva. */
+      const user = usersById.get(r.userId);
       return {
         ...user,
         achievementCount: Number(r.achievementCount),
@@ -136,7 +140,7 @@ export class LeaderboardService {
       };
     });
 
-    // Calcula a posição do utilizador autenticado
+    // Calcula a posição do utilizador autenticado no mesmo ranking por contagem.
     const userPositionRaw = await this.prisma.$queryRaw<[{ position: bigint }]>`
       SELECT COUNT(*) + 1 AS position
       FROM (
@@ -196,6 +200,7 @@ export class LeaderboardService {
       this.prisma.user.count({ where }),
     ]);
 
+    /** Usa o mesmo critério de desempate da query principal. */
     const userPosition = await this.getUserPosition(currentUserId, 'level');
 
     const rankedUsers = users.map((user, index) => ({
@@ -229,21 +234,35 @@ export class LeaderboardService {
     userId: string,
     field: 'xp' | 'level',
   ): Promise<number> {
-    // Busca o valor actual do utilizador
+    // Busca os valores actuais do utilizador para aplicar o mesmo desempate da listagem.
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
-      select: { [field]: true },
+      select: { id: true, xp: true, level: true },
     });
 
     if (!user) return 0;
 
-    const userValue = (user as any)[field];
+    /** XP usa level como desempate; level usa XP como desempate. */
+    const primaryValue = user[field];
+    const tieBreakerField = field === 'xp' ? 'level' : 'xp';
+    const tieBreakerValue = user[tieBreakerField];
 
-    // Conta quantos utilizadores têm valor maior (posição = count + 1)
+    // Conta quem fica estritamente à frente considerando valor, desempate e ID estável.
     const ahead = await this.prisma.user.count({
       where: {
         isBanned: false,
-        [field]: { gt: userValue },
+        OR: [
+          { [field]: { gt: primaryValue } },
+          {
+            [field]: primaryValue,
+            [tieBreakerField]: { gt: tieBreakerValue },
+          },
+          {
+            [field]: primaryValue,
+            [tieBreakerField]: tieBreakerValue,
+            id: { lt: user.id },
+          },
+        ],
       },
     });
 

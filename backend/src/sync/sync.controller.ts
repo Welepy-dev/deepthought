@@ -6,6 +6,7 @@ import {
   HttpCode,
   HttpStatus,
   Logger,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { SyncService } from './sync.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -45,6 +46,11 @@ export class SyncController {
     // Extrai o ID do utilizador autenticado e o token OAuth2 do payload JWT
     const userId: string = req.user.sub;
     const accessToken: string = req.user.accessToken;
+
+    /** Tokens emitidos após OTP inicial podem não ter token 42; nesses casos sync manual não é possível. */
+    if (!accessToken) {
+      throw new UnauthorizedException('42 OAuth token is required to sync');
+    }
 
     this.logger.log(`Manual sync requested by user ${userId}`);
 

@@ -24,6 +24,7 @@ export interface AuthTokensResponse extends OtpTokens {
     displayName: string;
     avatar: string | null;
     campus: string | null;
+    coalition: string | null;
     level: number;
     role: string;
   };
@@ -89,18 +90,14 @@ export class AuthService {
       });
     }
 
-    // Inicia o sync de forma assíncrona (não bloqueia o login)
-    // Usa setImmediate para não atrasar a resposta ao cliente
-    setImmediate(async () => {
-      try {
-        await this.syncService.syncUser(user!.id, accessToken);
-      } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
+    // Executa o sync do login com o perfil já carregado, sem nova chamada à API 42.
+    // O JWT só é emitido depois de User/Projects ficarem consistentes no Prisma.
+    await this.syncService.syncFromProfile(user.id, profile);
 
-        this.logger.warn(
-          `Background sync failed for user ${user!.id}: ${message}`,
-        );
-      }
+    // Recarrega o User depois do sync para devolver JWT/profile com coalition, campus e nível atuais.
+    user = await this.prisma.user.findUniqueOrThrow({
+      /** O ID interno foi definido antes do sync e continua a ser a fonte canónica. */
+      where: { id: user.id },
     });
 
     // Primeiro login: email ainda não foi verificado por OTP nesta aplicação.
@@ -128,6 +125,7 @@ export class AuthService {
         displayName: user.displayName,
         avatar: user.avatar,
         campus: user.campus,
+        coalition: user.coalition,
         level: user.level,
         role: user.role,
       },
