@@ -4,10 +4,10 @@ import { IsString, Matches } from 'class-validator';
 export class VerifyOtpDto {
   /** ID interno do utilizador criado/encontrado após o OAuth da 42. */
   @IsString()
-  userId: string;
+  userId!: string;
 
   /** OTP deve conter exactamente 6 dígitos, sem letras ou espaços. */
   @IsString()
   @Matches(/^\d{6}$/, { message: 'code must contain exactly 6 digits' })
-  code: string;
+  code!: string;
 }
