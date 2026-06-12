@@ -1,49 +1,42 @@
 import { Module } from '@nestjs/common';
-import { JwtModule } from '@nestjs/jwt';
-import { PassportModule } from '@nestjs/passport';
-
-import { MailerModule } from '@nestjs-modules/mailer';
-
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
-
-import { PrismaModule } from '../prisma/prisma.module';
-
+import { JwtModule } from '@nestjs/jwt';
+import { ConfigModule, ConfigService } from '@nestjs/config';
+import { PassportModule } from '@nestjs/passport';
+import { FortyTwoStrategy } from './strategies/forty-two.strategy';
 import { JwtStrategy } from './strategies/jwt.strategy';
-import { JwtAuthGuard } from './guards/jwt-auth.guard';
+import { PrismaModule } from '../prisma/prisma.module';
+import { UsersModule } from '../users/users.module';
+import { SyncModule } from '../sync/sync.module';
+import { FortyTwoModule } from '../integrations/fortytwo/fortytwo.module';
+import { OtpModule } from './otp/otp.module';
 
+/**
+ * Módulo de autenticação.
+ * Configura o Passport com as estratégias OAuth2 (42) e JWT.
+ * Depende do UsersModule, SyncModule e FortyTwoModule.
+ */
 @Module({
   imports: [
     PrismaModule,
-
+    UsersModule,
+    SyncModule,
+    FortyTwoModule,
+    OtpModule,
     PassportModule,
-
-    JwtModule.register({
-      secret: process.env.JWT_SECRET || 'dev_secret',
-      signOptions: {
-        expiresIn: '15m',
-      },
-    }),
-
-    MailerModule.forRoot({
-      transport: {
-        service: 'gmail',
-        auth: {
-          user: process.env.EMAIL_USER,
-          pass: process.env.EMAIL_PASS,
-        },
-      },
+    // Configuração assíncrona do JWT usando ConfigService
+    JwtModule.registerAsync({
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: (config: ConfigService) => ({
+        secret: config.get<string>('JWT_SECRET'),
+        signOptions: { expiresIn: '7d' },
+      }),
     }),
   ],
-
   controllers: [AuthController],
-
-  providers: [
-    AuthService,
-    JwtStrategy,
-    JwtAuthGuard,
-  ],
-
-  exports: [AuthService],
+  providers: [AuthService, FortyTwoStrategy, JwtStrategy],
+  exports: [AuthService, JwtModule],
 })
 export class AuthModule {}

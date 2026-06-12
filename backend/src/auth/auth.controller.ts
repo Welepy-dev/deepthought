@@ -1,46 +1,39 @@
-import { Controller, Post, Body } from '@nestjs/common';
-import { AuthService } from './auth.service';
-import { SignupDto } from './dto/signup.dto';
-import { LoginDto } from './dto/login.dto';
-import { UseGuards, Get } from '@nestjs/common';
-import { JwtAuthGuard } from './guards/jwt-auth.guard';
-import { VerifyOtpDto } from './dto/verify-otp.dto';
+import { Controller, Get, Req, UseGuards, Res } from '@nestjs/common';
 
-import { Request } from '@nestjs/common';
+import { AuthGuard } from '@nestjs/passport';
+
+import { AuthService } from './auth.service';
+
+import type { Response } from 'express';
 
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
-  @Post('signup')
-  signup(@Body() dto: SignupDto) {
-    return this.authService.signup(dto);
-  }
+  @Get('42/login')
+  @UseGuards(AuthGuard('42'))
+  async login() {}
 
-  @Post('login')
-  login(@Body() dto: LoginDto) {
-    return this.authService.login(dto);
-  }
+  @Get('42/callback')
+  @UseGuards(AuthGuard('42'))
+  async callback(@Req() req, @Res() res: Response) {
+    /** O accessToken vem da strategy OAuth2 da 42 depois da callback. */
+    const result = await this.authService.login42(req.user.accessToken);
 
-  @UseGuards(JwtAuthGuard)
-  @Get('profile')
-  getProfile(@Request() req) {
-    return req.user;
-  }
+    /** Primeiro login: responde JSON para o frontend pedir o código OTP. */
+    if ('requiresOtp' in result) {
+      return res.json(result);
+    }
 
-  @Post('verify-otp')
-  verifyOtp(@Body() dto: VerifyOtpDto) {
-    return this.authService.verifyOtp(dto);
-  }
+    /** Login futuro: guarda o access token em cookie httpOnly como antes. */
+    res.cookie('access_token', result.accessToken, {
+      httpOnly: true,
+      secure: true,
+      sameSite: 'lax',
+      maxAge: 1000 * 60 * 60 * 24,
+    });
 
-  @Post('refresh')
-  refresh(@Body() body: { refreshToken: string }, @Request() req) {
-    return this.authService.refresh(body.refreshToken)
-  }
-
-  @UseGuards(JwtAuthGuard)
-  @Post('logout')
-  logout(@Request() req) {
-    return this.authService.logout(req.user.userId)
+    /** Depois de autenticado com JWT, redirecciona para a aplicação. */
+    return res.redirect(`${process.env.FRONTEND_URL}/game`);
   }
 }

@@ -10,8 +10,10 @@ describe('AuthController', () => {
       controllers: [AuthController],
       providers: [
         {
+          /** Mock mínimo porque este spec só verifica se o controller compila. */
           provide: AuthService,
-          useValue: {},
+          /** O método existe para satisfazer a injecção sem executar OAuth real. */
+          useValue: { login42: jest.fn() },
         },
       ],
     }).compile();

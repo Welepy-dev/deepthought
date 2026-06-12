@@ -1,0 +1,17 @@
+# Evita copiar dependências locais para dentro do contexto Docker.
+node_modules
+
+# Evita enviar builds antigos, incluindo ficheiros com ownership de containers.
+dist
+
+# Evita cache/test output no contexto da imagem.
+coverage
+.cache
+
+# Evita metadata local e logs no contexto.
+.git
+*.log
+npm-debug.log*
+
+# Mantém ficheiros de ambiente fora da imagem; compose injecta env_file.
+.env

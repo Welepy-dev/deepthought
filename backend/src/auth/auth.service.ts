@@ -1,206 +1,134 @@
-import { Injectable, ConflictException, UnauthorizedException } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { SignupDto } from './dto/signup.dto';
-import { LoginDto } from './dto/login.dto';
-import { randomBytes } from 'crypto';
-import { JwtService } from '@nestjs/jwt';
-import * as bcrypt from 'bcrypt';
-import { MailerService } from '@nestjs-modules/mailer';
-import { VerifyOtpDto } from './dto/verify-otp.dto';
+import { UsersService } from '../users/users.service';
+import { SyncService } from '../sync/sync.service';
+import { FortyTwoService } from '../integrations/fortytwo/fortytwo.service';
+import { OtpService, OtpTokens } from './otp/otp.service';
 
+/** Resposta quando o primeiro login precisa validar OTP antes de receber JWT. */
+export interface RequiresOtpResponse {
+  /** Sinaliza ao frontend que deve abrir o ecrã de OTP. */
+  requiresOtp: true;
+  /** ID interno usado pelo POST /auth/otp/verify junto com o código. */
+  userId: string;
+}
+
+/** Resposta normal para utilizadores já verificados. */
+export interface AuthTokensResponse extends OtpTokens {
+  /** Alias temporário para manter compatibilidade com o cookie antigo. */
+  access_token: string;
+  /** Dados públicos mínimos para o frontend após autenticação. */
+  user: {
+    id: string;
+    login: string;
+    displayName: string;
+    avatar: string | null;
+    campus: string | null;
+    coalition: string | null;
+    level: number;
+    role: string;
+  };
+}
+
+/** União dos dois caminhos possíveis depois do OAuth da 42. */
+export type Login42Response = RequiresOtpResponse | AuthTokensResponse;
+
+/**
+ * Serviço de autenticação — responsável pelo fluxo OAuth2 com a 42.
+ *
+ * Fluxo de login:
+ * 1. Recebe o accessToken OAuth2 da callback da 42
+ * 2. Busca o perfil do utilizador na API 42
+ * 3. Cria o utilizador se for o primeiro login
+ * 4. Se isEmailVerified=false, envia OTP e não gera JWT
+ * 5. Se isEmailVerified=true, gera JWT imediatamente
+ * 6. Inicia sync assíncrono para actualizar dados
+ */
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
+
   constructor(
-    private prisma: PrismaService,
-    private jwtService: JwtService,
-    private mailer: MailerService,
+    /** Acesso à base de dados */
+    private readonly prisma: PrismaService,
+    /** Gestão de utilizadores */
+    private readonly usersService: UsersService,
+    /** Serviço de sincronização com a API 42 */
+    private readonly syncService: SyncService,
+    /** Wrapper da API 42 */
+    private readonly fortyTwoService: FortyTwoService,
+    /** Serviço que gere OAuth -> OTP -> JWT no primeiro login */
+    private readonly otpService: OtpService,
   ) {}
 
-  async signup(dto: SignupDto) {
-    const userExists = await this.prisma.user.findUnique({
-      where: { email: dto.email },
-    });
+  /**
+   * Processa o login via OAuth2 da 42.
+   * Cria o utilizador se for novo, ou actualiza lastSeenAt se já existir.
+   * Desencadeia sync assíncrono após login.
+   * @param accessToken Token OAuth2 obtido da callback da 42
+   * @returns Pedido de OTP no primeiro login ou JWTs nos logins seguintes
+   */
+  async login42(accessToken: string): Promise<Login42Response> {
+    this.logger.log('Processing 42 OAuth login');
 
-    if (userExists) {
-      throw new ConflictException('Email already exists');
-    }
+    // Busca o perfil completo na API 42
+    const profile = await this.fortyTwoService.getMe(accessToken);
 
-    const hashedPassword = await bcrypt.hash(dto.password, 10);
-
-    const user = await this.prisma.user.create({
-      data: {
-        email: dto.email,
-        password: hashedPassword,
-      },
-    });
-
-    return {
-      message: 'User created',
-      user: { id: user.id, email: user.email },
-    };
-  }
-
-  async login(dto: LoginDto) {
-    await this.createAndSendOtp(dto.email);
-    return {
-      message: 'OTP sent',
-      requires2fa: true,
-    };
-  }
-
-  async logout(userId: string) {
-    await this.prisma.refreshToken.deleteMany({
-      where: { userId },
-    })
-    return { message: 'Logged out successfully' }
-  }
-
-  private async createAndSendOtp(email: string) {
-    const otp = Math.floor(100000 + Math.random() * 900000).toString();
-
-    await this.prisma.oTPCode.deleteMany({
-      where: { email },
-    });
-
-    await this.prisma.oTPCode.create({
-      data: {
-        email,
-        code: otp,
-        expiresAt: new Date(Date.now() + 5 * 60 * 1000),
-      },
-    });
-
-    await this.mailer.sendMail({
-      from: process.env.EMAIL_USER,
-      to: email,
-      subject: 'Deepthought OTP',
-      text: `Your OTP code is: ${otp}`,
-    });
-  }
-
-  async verifyOtp(dto: VerifyOtpDto) {
-    const otpRecord = await this.prisma.oTPCode.findFirst({
-      where: {
-        email: dto.email,
-        code: dto.otp,
-        expiresAt: {
-          gt: new Date(),
-        },
-      },
-    });
-
-    if (!otpRecord) {
-      throw new UnauthorizedException('Invalid OTP');
-    }
-
-    await this.prisma.oTPCode.delete({
-      where: {
-        id: otpRecord.id,
-      },
-    });
-
-    let user = await this.prisma.user.findUnique({
-      where: {
-        email: dto.email,
-      },
-    });
+    // Verifica se o utilizador já existe (pelo ID único da 42)
+    let user = await this.usersService.findBy42Id(profile.fortyTwoId);
 
     if (!user) {
-      user = await this.prisma.user.create({
-        data: {
-          email: dto.email,
-          password: '',
-        },
+      // Primeiro login: cria o utilizador com os dados básicos do perfil
+      this.logger.log(`Creating new user for login: ${profile.login}`);
+      user = await this.usersService.createFrom42Profile(profile);
+    } else {
+      // Login subsequente: actualiza o timestamp da última visita
+      this.logger.log(`Existing user logged in: ${profile.login}`);
+      user = await this.prisma.user.update({
+        where: { id: user.id },
+        data: { lastSeenAt: new Date() },
       });
     }
 
-    const payload = {
-      sub: user.id,
-      email: user.email,
-    };
+    // Executa o sync do login com o perfil já carregado, sem nova chamada à API 42.
+    // O JWT só é emitido depois de User/Projects ficarem consistentes no Prisma.
+    await this.syncService.syncFromProfile(user.id, profile);
 
-    const accessToken = this.jwtService.sign(payload, { expiresIn: '15m' });
-    const refreshToken = randomBytes(64).toString('hex');
-    const refreshTokenHash = await bcrypt.hash(refreshToken, 10);
+    // Recarrega o User depois do sync para devolver JWT/profile com coalition, campus e nível atuais.
+    user = await this.prisma.user.findUniqueOrThrow({
+      /** O ID interno foi definido antes do sync e continua a ser a fonte canónica. */
+      where: { id: user.id },
+    });
 
-    await this.prisma.refreshToken.create({
-      data: {
-        tokenHash: refreshTokenHash,
+    // Primeiro login: email ainda não foi verificado por OTP nesta aplicação.
+    // Nesta situação não emitimos JWT, para impedir sessão antes da validação.
+    if (user.isEmailVerified === false) {
+      await this.otpService.generateAndSendOtp(user);
+
+      return {
+        requiresOtp: true,
         userId: user.id,
-        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-      },
-    });
+      };
+    }
+
+    // Logins futuros: o OTP já foi validado no passado, por isso segue normal.
+    // O accessToken OAuth2 é incluído no JWT para permitir sync manual com a 42.
+    const tokens = await this.otpService.issueTokens(user, accessToken);
 
     return {
-      accessToken,
-      refreshToken,
+      accessToken: tokens.accessToken,
+      refreshToken: tokens.refreshToken,
+      access_token: tokens.accessToken,
+      user: {
+        id: user.id,
+        login: user.login,
+        displayName: user.displayName,
+        avatar: user.avatar,
+        campus: user.campus,
+        coalition: user.coalition,
+        level: user.level,
+        role: user.role,
+      },
     };
-  }
-
-  async refresh(refreshToken: string) {
-    const storedTokens = await this.prisma.refreshToken.findMany({
-      where: {
-        revoked: false,
-        expiresAt: {
-          gt: new Date(),
-        },
-      },
-      include: {
-        user: true,
-      },
-    })
-
-    const storedToken = await this.findMatchingRefreshToken(refreshToken, storedTokens);
-
-    if (!storedToken) {
-      throw new UnauthorizedException('Invalid refresh token')
-    }
-
-    await this.prisma.refreshToken.update({
-      where: { id: storedToken.id },
-      data: { revoked: true },
-    });
-
-    const newRefreshToken = randomBytes(64).toString('hex');
-    const newRefreshTokenHash = await bcrypt.hash(newRefreshToken, 10);
-
-    await this.prisma.refreshToken.create({
-      data: {
-        tokenHash: newRefreshTokenHash,
-        userId: storedToken.userId,
-        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-      },
-    });
-
-    const payload = {
-      sub: storedToken.userId,
-      email: storedToken.user.email,
-    }
-
-    const newAccessToken = this.jwtService.sign(payload, {
-      expiresIn: '15m',
-    })
-
-    return {
-      accessToken: newAccessToken,
-      refreshToken: newRefreshToken,
-    }
-  }
-
-  private async findMatchingRefreshToken(
-    refreshToken: string,
-    storedTokens: Array<{
-      id: string;
-      tokenHash: string;
-      userId: string;
-      user: { email: string };
-    }>,
-  ) {
-    for (const storedToken of storedTokens) {
-      if (await bcrypt.compare(refreshToken, storedToken.tokenHash)) {
-        return storedToken;
-      }
-    }
-    return null;
   }
 }
