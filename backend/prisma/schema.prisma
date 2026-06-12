@@ -257,39 +257,3 @@ enum ChatRoomType {
   PROJECT
   ROOM
 }
-
-model user {
-  id        String   @id @default(uuid())
-  email     String   @unique
-  password  String
-  createdAt DateTime @default(now())
-
-  refreshTokens RefreshToken[]
-}
-
-model RefreshToken {
-  id         String   @id @default(uuid())
-  tokenHash  String   @unique
-  userId     String
-  user       user     @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  createdAt  DateTime @default(now())
-  expiresAt  DateTime
-  revoked    Boolean  @default(false)
-}
-
-model EmailOtp {
-  id        String   @id @default(uuid())
-  email     String
-  code      String
-  expiresAt DateTime
-  createdAt DateTime @default(now())
-}
-
-model OTPCode {
-  id        String   @id @default(uuid())
-  email     String
-  code      String
-  expiresAt DateTime
-  createdAt DateTime @default(now())
-}

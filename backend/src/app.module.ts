@@ -29,9 +29,5 @@ import { FortyTwoModule } from './integrations/fortytwo/fortytwo.module';
     PrismaModule,
     FortyTwoModule,
   ],
-
-  controllers: [AppController],
-
-  providers: [AppService],
 })
 export class AppModule {}
