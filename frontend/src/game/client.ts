@@ -1,114 +1,104 @@
 import Phaser from "phaser";
-
-const TILE_HEIGHT = 32;
-const TILE_WIDTH = 64;
+import { setupCamera } from "./setupCamera";
+import { setupUI } from "./setupUI";
+import { setupInput } from "./setupInput";
+import { setupMap } from "./setupMap";
+import { cartToIso, isoToCart } from "./isometricUtils";
+import { toLocal, isValidTile } from "./mapCoords";
+import { Player } from "./player";
 
 class GameScene extends Phaser.Scene {
-	private mapData: number[][] = [
-		[1, 1, 1, 1, 1, 1, 1, 1],
-		[1, 1, 1, 1, 1, 1, 1, 1],
-		[1, 1, 1, 1, 1, 1, 1, 1],
-		[1, 1, 1, 1, 1, 1, 1, 1],
-		[1, 1, 1, 1, 1, 1, 1, 1],
-		[1, 1, 1, 1, 1, 1, 1, 1],
-		[1, 1, 1, 1, 1, 1, 1, 1],
-		[1, 1, 1, 1, 1, 1, 1, 1],
-	]
-	private offsetX = 0
-	private offsetY = 0
-	private highlightTile!: Phaser.GameObjects.Image
+    private offsetX = 0;
+    private offsetY = 0;
+    private map?: Phaser.Tilemaps.Tilemap;
+    private highlight?: Phaser.GameObjects.Image;
+    private player?: Player;
 
-	preload() {
-		// Inside your Phaser preload() function:
-		this.load.image('wooden-floor', 'assets/floor.png');
-		this.load.image('highlight', 'assets/tilehighlight.png');
-	}
+    preload() {
+        this.load.image("floor",       "assets/tilesets/floors.png");
+        this.load.image("props",       "assets/tilesets/Props.png");
+        this.load.image("walls",       "assets/tilesets/walls.png");
+        this.load.image("plusButton",  "assets/buttons/plusButton.png");
+        this.load.image("minusButton", "assets/buttons/minusButton.png");
+        this.load.image("highlight",   "assets/highlight.png");
+        this.load.tilemapTiledJSON("map", "assets/cluster/map1.tmj");
+    }
 
-	create() {
-	// Center the map on screen
-		this.offsetX = this.cameras.main.width / 2
-		this.offsetY = this.cameras.main.height / 3
-		
-		this.highlightTile = this.add.image(0, 0, 'highlight')
-		this.highlightTile.setVisible(false)
+    create() {
+        this.offsetX = Math.floor(this.cameras.main.width  / 2);
+        this.offsetY = Math.floor(this.cameras.main.height / 2);
 
-		this.input.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
-			const isoX = pointer.x - this.offsetX
-			const isoY = pointer.y - this.offsetY
-			let { x: tileX, y: tileY } = isoToCart(isoX, isoY)
-			
-			
-			if (tileX >= 0 && tileX < this.mapData[0].length && 
-				tileY >= 0 && tileY < this.mapData.length) {
-					console.log(`Clicked tile: (${tileX}, ${tileY}) - Type: ${this.mapData[tileY][tileX]}`)
-			}
-		})
+        const uiCamera = this.cameras.add(
+            0, 0,
+            this.cameras.main.width,
+            this.cameras.main.height,
+        );
+        uiCamera.setScroll(0, 0);
 
-		for (let row = 0; row < this.mapData.length; row++) {
-			for (let col = 0; col < this.mapData[row].length; col++) {
-				const tileType = this.mapData[row][col]
-				const { x, y } = cartToIso(col, row)
+        const { map } = setupMap(this, this.offsetX, this.offsetY);
+        this.map = map;
+        setupCamera(this, map, this.offsetX, this.offsetY);
+        setupInput(this);
+        setupUI(this, this.cameras.main);
 
-				const texture = tileType === 1 ? 'wooden-floor' : 'wooden-floor'
+        this.highlight = this.add.image(0, 0, "highlight").setOrigin(0, 0);
+        this.highlight.setVisible(false);
 
-				const tile = this.add.image(
-					x + this.offsetX,
-					y + this.offsetY,
-					texture
-				)
+        // ── Spawn player at local (0, 0) — the entrance tile ─────────────────
+        // To spawn elsewhere, just change these two numbers to any valid
+        // local room coordinates. isValidTile() will tell you if a coord is walkable.
+        this.player = new Player(this, this.offsetX, this.offsetY, 0, 0);
 
-				// Set depth for correct layering
-				tile.setDepth(col + row)
-			}
-		}
+        // ── Click to move ─────────────────────────────────────────────────────
+        // Convert the click's world tile coord → local, validate, then move.
+        this.input.on("pointerdown", (pointer: Phaser.Input.Pointer) => {
+            const worldX = pointer.worldX - this.offsetX;
+            const worldY = pointer.worldY - this.offsetY;
 
-	}
+            const { x: wx, y: wy } = isoToCart(worldX, worldY);
+            const { lx, ly }       = toLocal(wx, wy);
 
-	update(_time: number, _delta: number): void {
-		const worldX = this.input.activePointer.worldX - this.offsetX
-		const worldY = this.input.activePointer.worldY - this.offsetY
-		const { x: hoverX, y: hoverY } = isoToCart(worldX, worldY)
+            if (isValidTile(lx, ly)) {
+                this.player?.setLocalTile(lx, ly);
+            }
+        });
+    }
 
-		if (hoverX >= 0 && hoverX < this.mapData[0].length && 
-			hoverY >= 0 && hoverY < this.mapData.length) {
-				const isoPos = cartToIso(hoverX, hoverY)
-				this.highlightTile.setPosition(isoPos.x + this.offsetX, isoPos.y + this.offsetY)
-				this.highlightTile.setDepth(hoverX + hoverY + 0.5)
-				this.highlightTile.setVisible(true)
-		} else {
-			this.highlightTile.setVisible(false)
-		}
+    update(_time: number, _delta: number): void {
+        const worldX = this.input.activePointer.worldX - this.offsetX;
+        const worldY = this.input.activePointer.worldY - this.offsetY;
 
-	}
-}
+        const { x: hoverX, y: hoverY } = isoToCart(worldX, worldY);
+        const { lx, ly }               = toLocal(hoverX, hoverY);
+        const valid                    = isValidTile(lx, ly);
 
-function cartToIso(cartX: number, cartY: number): { x: number, y: number } {
-	const x = (cartX - cartY) * (TILE_WIDTH / 2);
-	const y = (cartX + cartY) * (TILE_HEIGHT / 2);
-	return { x, y };
-}
-
-function isoToCart(isoX: number, isoY: number): { x: number, y: number } {
-	const x = Math.floor((isoY / (TILE_HEIGHT / 2) + isoX / (TILE_WIDTH / 2)) / 2);
-	const y = Math.floor((isoY / (TILE_HEIGHT / 2) - isoX / (TILE_WIDTH / 2)) / 2);
-	return { x, y };
+        if (
+            this.map &&
+            hoverX >= 0 && hoverX < this.map.width &&
+            hoverY >= 0 && hoverY < this.map.height
+        ) {
+            const isoPos = cartToIso(hoverX, hoverY);
+            this.highlight?.setPosition(isoPos.x + this.offsetX, isoPos.y + this.offsetY);
+            this.highlight?.setTint(valid ? 0xffffff : 0xff4444); // white = walkable, red = empty
+            this.highlight?.setVisible(true);
+            this.highlight?.setDepth(0.5);
+        } else {
+            this.highlight?.setVisible(false);
+        }
+    }
 }
 
 export function startGame(parent: string | HTMLElement): Phaser.Game {
-	return new Phaser.Game({
-		type: Phaser.AUTO,
-		parent,
-		width: 1600,
-		height: 800,
-		backgroundColor: "#111125",
-		scene: [GameScene],
-		physics: {
-			default: 'arcade',
-			arcade: {
-				debug: false,
-				gravity: { x: 0, y: 0 },
-			},
-		},
-		// scene: [MenuScene, GameScene],
-	});
+    return new Phaser.Game({
+        type: Phaser.AUTO,
+        parent,
+        width: 1600,
+        height: 800,
+        backgroundColor: "#111125",
+        scene: [GameScene],
+        physics: {
+            default: "arcade",
+            arcade: { debug: false, gravity: { x: 0, y: 0 } },
+        },
+    });
 }
