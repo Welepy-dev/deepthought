@@ -5,4 +5,4 @@
  * domínio que já está configurado no botão OAuth, evitando POST OTP para
  * localhost quando o backend real está atrás do ngrok.
  */
-export const API_BASE_URL = 'https://premiere-crook-saggy.ngrok-free.dev';
+export const API_BASE_URL = 'http://localhost:3000';
