@@ -18,16 +18,16 @@ services:
     build: ./backend
     container_name: transcendence_backend
     restart: unless-stopped
-    ports:
-      - "3000:3000"
-      - "5555:5555"
     env_file:
       - .env
+    environment:
+      FRONTEND_URL: https://localhost
+      FORTY_TWO_CALLBACK_URL: https://localhost/api/auth/42/callback
+      CORS_ORIGINS: https://localhost,http://localhost:5173,http://127.0.0.1:5173
     depends_on:
       - postgres
-    volumes:
-      - ./backend:/app
-      - /app/node_modules
+    expose:
+      - "3000"
     networks:
       - transcendence_network
 
@@ -35,13 +35,23 @@ services:
     build: ./frontend
     container_name: transcendence_frontend
     restart: unless-stopped
-    ports:
-      - "5173:5173"
     depends_on:
       - backend
-    volumes:
-      - ./frontend:/app
-      - /app/node_modules
+    expose:
+      - "80"
+    networks:
+      - transcendence_network
+
+  nginx:
+    build: ./nginx
+    container_name: transcendence_nginx
+    restart: unless-stopped
+    depends_on:
+      - frontend
+      - backend
+    ports:
+      - "80:80"
+      - "443:443"
     networks:
       - transcendence_network
 

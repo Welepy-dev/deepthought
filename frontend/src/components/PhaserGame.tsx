@@ -1,12 +1,12 @@
 // PhaserGame.jsx - bridge, nothing more
 import { useEffect, useRef } from "react";
-import { useNavigate } from "react-router-dom";
+//import { useNavigate } from "react-router-dom";
 import { startGame } from "../game/client";
-import { logout } from "../auth/logout";
+//import { logout } from "../auth/logout";
 
 export default function PhaserGame() {
   const containerRef = useRef<HTMLDivElement | null>(null);
-  const navigate = useNavigate();
+//  const navigate = useNavigate();
 
   useEffect(() => {
     if (!containerRef.current) return;

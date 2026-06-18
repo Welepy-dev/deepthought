@@ -21,7 +21,7 @@ export class FortyTwoOAuthExceptionFilter implements ExceptionFilter {
   catch(exception: unknown, host: ArgumentsHost) {
     /** O filtro é usado apenas nas rotas OAuth, por isso a resposta é sempre redirect. */
     const response = host.switchToHttp().getResponse<Response>();
-    const frontendUrl = process.env.FRONTEND_URL ?? 'http://localhost:5173';
+    const frontendUrl = process.env.FRONTEND_URL ?? 'https://localhost';
     const message =
       exception instanceof Error ? exception.message : String(exception);
 

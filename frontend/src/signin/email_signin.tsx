@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router'
 import emailIcon from '../assets/closed_email.png'
+import { API_BASE_URL } from '../config/api'
 
 export default function EmailSignIn() {
 
@@ -20,7 +21,7 @@ export default function EmailSignIn() {
 		try {
 			setLoading(true)
 
-			const response = await fetch('http://localhost:3000/auth/login', {
+			const response = await fetch(`${API_BASE_URL}/auth/login`, {
 				method: 'POST',
 				headers: {
 					'Content-Type': 'application/json',

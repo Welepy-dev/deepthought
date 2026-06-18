@@ -26,7 +26,7 @@ import { toWorld } from "./mapCoords";
  *   depth slots neatly between the walls layer (depth 1) and props (depth 2).
  */
 export class Player {
-    private scene:   Phaser.Scene;
+//    private scene:   Phaser.Scene;
     private visual:  Phaser.GameObjects.Rectangle; // swap for Sprite once you have art
     private offsetX: number;
     private offsetY: number;
@@ -42,7 +42,7 @@ export class Player {
         startLX: number,  // local room X
         startLY: number,  // local room Y
     ) {
-        this.scene   = scene;
+//      this.scene   = scene;
         this.offsetX = offsetX;
         this.offsetY = offsetY;
         this.lx      = startLX;

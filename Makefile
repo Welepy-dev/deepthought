@@ -39,6 +39,9 @@ logs-frontend:
 logs-postgres:
 	$(COMPOSE) logs -f postgres
 
+logs-nginx:
+	$(COMPOSE) logs -f nginx
+
 # Executa as migrações do Prisma e gera o cliente dentro do container do backend.
 prisma-dev:
 	$(COMPOSE) run --rm backend sh -c "npx prisma migrate dev && npx prisma generate"

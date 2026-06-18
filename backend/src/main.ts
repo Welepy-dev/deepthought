@@ -14,8 +14,17 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
   /**
-   * O frontend Vite chama o backend por origem diferente durante OAuth/OTP.
-   * Sem CORS, o browser bloqueia POST /auth/otp/verify e o React cai em "Server error".
+   * Quando o Nest fica atrás do NGINX, o proxy define X-Forwarded-Proto/For.
+   * Trust proxy permite que req.secure, cookies secure e logs reflitam HTTPS real.
+   */
+  /** O adaptador HTTP expõe a instância Express; o cast mantém a tipagem explícita. */
+  (app.getHttpAdapter().getInstance() as {
+    set: (key: string, value: unknown) => void;
+  }).set('trust proxy', 1);
+
+  /**
+   * Durante o desenvolvimento e sob reverse proxy, o browser pode falar com o backend
+   * por origens diferentes. Mantemos uma allowlist curta para não abrir CORS em excesso.
    */
   app.enableCors({
     origin: buildCorsOrigins(),
@@ -33,7 +42,7 @@ async function bootstrap() {
   await app.listen(process.env.PORT ?? 3000);
 }
 
-/** Monta a allowlist de origens do frontend para dev local, ngrok e Docker. */
+/** Monta a allowlist de origens do frontend para dev local, HTTPS e Docker. */
 function buildCorsOrigins(): string[] {
   /** FRONTEND_URL é o destino usado no redirect OAuth -> React. */
   const frontendUrl = process.env.FRONTEND_URL;
@@ -46,6 +55,8 @@ function buildCorsOrigins(): string[] {
 
   /** Defaults seguros para o Vite local usado no projecto. */
   return [
+    'https://localhost',
+    'https://127.0.0.1',
     'http://localhost:5173',
     'http://127.0.0.1:5173',
     ...(frontendUrl ? [frontendUrl] : []),

@@ -1,74 +1,53 @@
-#Dev Mode
-FROM node:20-alpine
+# Build stage: compila NestJS e gera o Prisma Client com dependências completas.
+FROM node:20-alpine AS builder
 
+# Mantém o trabalho isolado em /app para facilitar cache e cópia seletiva.
 WORKDIR /app
 
+# Copia apenas manifests primeiro para aproveitar o cache de `npm ci`.
 COPY package*.json ./
-RUN npm install
 
+# Instala dependências exactas do lockfile, incluindo devDependencies usadas no build.
+RUN npm ci --no-audit --no-fund
+
+# Copia o schema Prisma antes de gerar o client tipado.
 COPY prisma ./prisma
+
+# Gera o client do Prisma antes do TypeScript compilar.
 RUN npx prisma generate
 
+# Copia o restante do código só depois das dependências estarem prontas.
 COPY . .
 
+# Compila o NestJS para `dist/`.
+RUN npm run build
+
+# Remove devDependencies para reduzir a imagem final sem instalar novamente.
+RUN npm prune --omit=dev && npm cache clean --force
+
+# Runtime stage: fica apenas com o necessário para executar o backend compilado.
+FROM node:20-alpine AS runner
+
+# Define ambiente de produção para scripts e bibliotecas do Node.
+ENV NODE_ENV=production
+
+# Diretório de execução do serviço NestJS.
+WORKDIR /app
+
+# Copia os node_modules já podados para produção.
+COPY --from=builder /app/node_modules ./node_modules
+
+# Copia package.json para manter metadata e eventuais comandos internos.
+COPY package*.json ./
+
+# Copia o schema e migrations para permitir `prisma migrate deploy` no arranque.
+COPY prisma ./prisma
+
+# Copia apenas o build compilado, não o TypeScript fonte.
+COPY --from=builder /app/dist ./dist
+
+# O backend continua interno ao Docker; só o NGINX publica esta porta ao exterior.
 EXPOSE 3000
 
-CMD ["npm", "run", "start:dev"]
-
-# Production Mode
-# Etapa comum: instala dependências completas para compilar NestJS e Prisma.
-#FROM node:20-alpine AS builder
-
-# Define o directório interno onde o backend será construído.
-#WORKDIR /app
-
-# Copia manifests primeiro para aproveitar cache do npm quando o código muda.
-#COPY package*.json ./
-
-# Instala dependências exactas do lockfile, incluindo dev deps necessárias ao build.
-#RUN npm ci
-
-# Copia o schema Prisma antes do generate para criar o client tipado.
-#COPY prisma ./prisma
-
-# Gera o Prisma Client usado pelo TypeScript durante o build.
-#RUN npx prisma generate
-
-# Copia o restante código depois das dependências para maximizar cache.
-#COPY . .
-
-# Compila NestJS para JavaScript em dist/.
-#RUN npm run build
-
-# Etapa de dependências de produção: reutiliza node_modules do build e poda dev deps.
-#FROM builder AS production-deps
-
-# Remove dependências de desenvolvimento sem fazer um segundo download npm.
-#RUN npm prune --omit=dev && npm cache clean --force
-
-# Etapa final: runtime mínimo com dist, Prisma e node_modules de produção.
-#FROM node:20-alpine AS runner
-
-# Define ambiente de produção para NestJS e bibliotecas.
-#ENV NODE_ENV=production
-
-# Cria directório da app.
-#WORKDIR /app
-
-# Copia dependências runtime já podadas.
-#COPY --from=production-deps /app/node_modules ./node_modules
-
-# Copia manifests para metadata e comandos npm se necessário.
-#COPY package*.json ./
-
-# Copia migrations/schema para `prisma migrate deploy` no arranque.
-#COPY prisma ./prisma
-
-# Copia apenas o build compilado, não o código TypeScript completo.
-#COPY --from=builder /app/dist ./dist
-
-# Expõe a porta HTTP do NestJS.
-#EXPOSE 3000
-
-# Aplica migrations pendentes e inicia o backend compilado.
-#CMD ["sh", "-c", "npx prisma migrate deploy && node dist/main"]
+# Aplica migrations pendentes e arranca o NestJS já compilado.
+CMD ["sh", "-c", "npx prisma migrate deploy && node dist/main"]

@@ -1,8 +1,7 @@
 /**
  * URL pública do backend usada pelo browser.
  *
- * Em produção/dev com ngrok. O fallback mantém o
- * domínio que já está configurado no botão OAuth, evitando POST OTP para
- * localhost quando o backend real está atrás do ngrok.
+ * O browser fala com o backend através do mesmo origin HTTPS e o NGINX faz
+ * o proxy de `/api` para o NestJS. Isso evita CORS e remove dependência de ngrok.
  */
-export const API_BASE_URL = 'https://premiere-crook-saggy.ngrok-free.dev';
+export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? '/api';

@@ -40,13 +40,13 @@ export class AuthController {
     const result = await this.authService.login42(req.user.accessToken);
 
     /** FRONTEND_URL centraliza o destino do browser depois do OAuth da 42. */
-    const frontendUrl = process.env.FRONTEND_URL ?? 'http://localhost:5173';
+    const frontendUrl = process.env.FRONTEND_URL ?? 'https://localhost';
 
     /** Primeiro login: o backend já gerou/enviou OTP e redireciona para o ecrã de validação. */
     if ('requiresOtp' in result) {
       /** userId é necessário para POST /auth/otp/verify; não há JWT antes do OTP válido. */
       return res.redirect(
-        `${frontendUrl}/OTPemail?userId=${encodeURIComponent(result.userId)}`,
+        `${frontendUrl}/Otpemail?userId=${encodeURIComponent(result.userId)}`,
       );
     }
 
