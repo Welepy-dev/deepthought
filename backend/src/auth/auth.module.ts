@@ -12,11 +12,6 @@ import { SyncModule } from '../sync/sync.module';
 import { FortyTwoModule } from '../integrations/fortytwo/fortytwo.module';
 import { OtpModule } from './otp/otp.module';
 
-/**
- * Módulo de autenticação.
- * Configura o Passport com as estratégias OAuth2 (42) e JWT.
- * Depende do UsersModule, SyncModule e FortyTwoModule.
- */
 @Module({
   imports: [
     PrismaModule,
