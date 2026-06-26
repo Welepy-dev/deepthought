@@ -2,10 +2,11 @@ import Phaser from "phaser";
 import { cartToIso } from "./isometricUtils";
 import { toWorld } from "./mapCoords";
 import { TILE_HEIGHT } from "./constants";
+
 /**
  * Player
  *
- * Holds a local room position (lx, ly) and a Phaser visual.
+ * Holds a local room position (lx, ly) and a Phaser Container of layer sprites.
  * All position changes go through setLocalTile() — the single
  * place that translates local → world → iso screen coords.
  *
@@ -19,69 +20,85 @@ import { TILE_HEIGHT } from "./constants";
  *       ↓  + offsetX/Y       shifts by the scene's canvas centre
  *   final pixel position on canvas
  *
+ * Direction frame mapping (per-layer spritesheet columns):
+ *   0 = NW  |  1 = NE  |  2 = SW  |  3 = SE
+ *
  * Depth sorting:
- *   In isometric views, tiles further "into" the screen (higher wx + wy)
- *   must render on top of nearer tiles. depth = wx + wy gives a natural
- *   painter's-algorithm order. We multiply by a small fraction so player
- *   depth slots neatly between the walls layer (depth 1) and props (depth 2).
+ *   depth = 3 + (wx + wy) * 0.01, keeping us between walls (1) and props (2).
  */
+
+const LAYER_KEYS = ['skin', 'eyes', 'hair', 'clothes', 'accessory'] as const;
+
+export type Direction = 'NW' | 'NE' | 'SW' | 'SE';
+
+const DIRECTION_FRAME: Record<Direction, number> = { NW: 0, NE: 1, SW: 2, SE: 3 };
+
 export class Player {
-	private scene:   Phaser.Scene;
-	private visual:  Phaser.GameObjects.Sprite; // swap for Sprite once you have art
+	private container: Phaser.GameObjects.Container;
+	private sprites: Phaser.GameObjects.Sprite[] = [];
 	private offsetX: number;
 	private offsetY: number;
+	private direction: Direction = 'SE';
 
-	// Current position in LOCAL room coordinates
 	public lx: number;
 	public ly: number;
 
 	constructor(
-		scene:   Phaser.Scene,
+		scene: Phaser.Scene,
 		offsetX: number,
 		offsetY: number,
-		startLX: number,  // local room X
-		startLY: number,  // local room Y
+		startLX: number,
+		startLY: number,
 	) {
-		this.scene   = scene;
 		this.offsetX = offsetX;
 		this.offsetY = offsetY;
 		this.lx      = startLX;
 		this.ly      = startLY;
 
-		// Placeholder rectangle — replace with:
-		//   this.visual = scene.add.sprite(0, 0, 'player').setOrigin(0.5, 1);
-		// once you have a spritesheet loaded.
-		this.visual = this.visual = scene.add.sprite(0, 0, "player").setOrigin(0.5, 1);                // anchor at feet, not centre
+		this.container = scene.add.container(0, 0);
 
-		// Place immediately at the start tile
+		for (const layer of LAYER_KEYS) {
+			const key = `char_${layer}`;
+			// Fallback to frame 3 (SE) on creation; setLocalTile will set the right frame
+			const sprite = scene.add.sprite(0, 0, key, DIRECTION_FRAME['SE']);
+			sprite.setOrigin(0.5, 1); // anchor at feet
+			this.sprites.push(sprite);
+			this.container.add(sprite);
+		}
+
 		this.setLocalTile(startLX, startLY);
 	}
 
 	/**
 	 * Move the player to a new local room position.
-	 * Call this from game logic / server messages — never set x/y directly.
+	 * Optionally change facing direction; if omitted, direction is inferred from movement.
 	 */
-	setLocalTile(lx: number, ly: number): void {
+	setLocalTile(lx: number, ly: number, direction?: Direction): void {
+		if (direction) this.direction = direction;
+
 		this.lx = lx;
 		this.ly = ly;
 
-		// Step 1 — local → world
 		const { wx, wy } = toWorld(lx, ly);
-
-		// Step 2 — world → iso screen pixels (relative to scene origin)
 		const iso = cartToIso(wx, wy);
 
-		// Step 3 — apply the scene's canvas offset
-		// The +TILE_HEIGHT/2 shifts the anchor to the bottom-centre of the
-		// tile diamond so the player appears to stand ON the tile, not above it.
-		// Adjust the Y nudge here if the player floats or sinks into the floor.
-		this.visual.setPosition(
-			iso.x + this.offsetX + TILE_HEIGHT / 2,      // +TILE_HEIGHT/2 = half tile width, centres on diamond
-			iso.y + this.offsetY + TILE_HEIGHT, // +TILE_HEIGHT, sits on tile surface
-		);
+		const x = iso.x + this.offsetX + TILE_HEIGHT / 2;
+		const y = iso.y + this.offsetY + TILE_HEIGHT;
 
-		// Step 4 — depth sort: higher wx+wy = further into map = drawn on top
-		// Range is walls (1) to props (2); *0.01 keeps us in that band.
-		this.visual.setDepth(3 + (wx + wy) * 0.01);
+		this.container.setPosition(x, y);
+		this.container.setDepth(3 + (wx + wy) * 0.01);
+
+		const frame = DIRECTION_FRAME[this.direction];
+		for (const sprite of this.sprites) {
+			sprite.setFrame(frame);
+		}
+	}
+
+	setDirection(direction: Direction): void {
+		this.direction = direction;
+		const frame = DIRECTION_FRAME[direction];
+		for (const sprite of this.sprites) {
+			sprite.setFrame(frame);
+		}
 	}
 }

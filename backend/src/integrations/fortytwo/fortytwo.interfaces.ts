@@ -46,7 +46,7 @@ export interface FortyTwoProjectUser {
   id: number;
   occurrence: number;
   final_mark: number | null;
-  status: string; // 'finished' | 'in_progress' | 'searching_a_group' | 'creating_group' | 'waiting_for_correction' | 'failed'
+  status: string; // 'finished' | 'in_progress' | 'searching_a_group' | 'creating_group' | 'waiting_for_avaluation' | 'failed'
   validated: boolean | null;
   current_team_id: number | null;
   project: {
@@ -92,7 +92,7 @@ export interface FortyTwoProfile {
   projects_users: FortyTwoProjectUser[];
   campus: FortyTwoCampus[];
   campus_users: Array<{ id: number; user_id: number; campus_id: number; is_primary: boolean }>;
-  correction_point: number;
+  avaluation_point: number;
   wallet: number;
   pool_month: string | null;
   pool_year: string | null;

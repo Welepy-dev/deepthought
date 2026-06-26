@@ -27,6 +27,8 @@ model User {
   lastSyncAt          DateTime?
   role                Role                  @default(USER)
   isEmailVerified     Boolean               @default(false)
+  characterCreated    Boolean               @default(false)
+  characterLayers     Json?
   otpCode             String?
   otpExpiresAt        DateTime?
   lastSeenAt          DateTime?

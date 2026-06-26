@@ -157,6 +157,10 @@ export class UsersService {
     if (dto.displayName !== undefined) updateData.displayName = dto.displayName;
     if (dto.avatar !== undefined) updateData.avatar = dto.avatar;
     if (dto.bio !== undefined) updateData.bio = dto.bio;
+    if (dto.characterLayers !== undefined) {
+      updateData.characterLayers = dto.characterLayers;
+      updateData.characterCreated = true;
+    }
 
     const user = await this.prisma.user.update({
       where: { id: userId },
@@ -172,6 +176,8 @@ export class UsersService {
         level: true,
         xp: true,
         role: true,
+        characterCreated: true,
+        characterLayers: true,
         updatedAt: true,
       },
     });

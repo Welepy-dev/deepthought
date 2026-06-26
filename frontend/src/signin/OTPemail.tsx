@@ -54,7 +54,7 @@ export default function OTPEmail() {
 			localStorage.setItem('token', data.accessToken)
 			localStorage.setItem('refreshToken', data.refreshToken)
 
-			navigate('/Game')
+			navigate('/ProfileSetup')
 
 		} catch {
 			setError('Server error')

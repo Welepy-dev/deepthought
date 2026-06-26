@@ -132,7 +132,7 @@ export class FortyTwoService {
       campus: primaryCampus,
       coalition: coalitionName,
       level: mainCursus?.level ?? 0,
-      evalPoints: profile.correction_point ?? 0,
+      evalPoints: profile.avaluation_point ?? 0,
       projects,
     };
   }
@@ -208,7 +208,7 @@ export class FortyTwoService {
       /** Procura de grupo indica que o utilizador ainda está no fluxo do projecto. */
       searching_a_group: 'IN_PROGRESS',
       /** Espera por avaliação ainda não é falha. */
-      waiting_for_correction: 'IN_PROGRESS',
+      waiting_for_avaluation: 'IN_PROGRESS',
       /** Apenas falha explícita da API vira FAILED. */
       failed: 'FAILED',
       /** Outra variante explícita de falha fica FAILED. */

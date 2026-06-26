@@ -1,14 +1,43 @@
-// PhaserGame.jsx - bridge, nothing more
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { startGame } from "../game/client";
+import { fetchMe } from "../api/character";
+import type { CharacterLayers } from "../api/character";
+
+const DEFAULT_LAYERS: CharacterLayers = {
+  skin: 'light',
+  eyes: 'blue',
+  hair: 'black_short',
+  clothes: 'tshirt_white',
+  accessory: 'none',
+}
 
 export default function PhaserGame() {
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const navigate = useNavigate();
+  const [ready, setReady] = useState(false);
+  const layersRef = useRef<CharacterLayers>(DEFAULT_LAYERS);
 
   useEffect(() => {
-    if (!containerRef.current) return;
+    fetchMe()
+      .then((user) => {
+        if (!user.characterCreated) {
+          navigate('/CharacterCreation', { replace: true });
+          return;
+        }
+        if (user.characterLayers) layersRef.current = user.characterLayers;
+        setReady(true);
+      })
+      .catch(() => {
+        // Network error — still allow game to load with defaults
+        setReady(true);
+      });
+  }, [navigate]);
 
-    const game = startGame(containerRef.current);
+  useEffect(() => {
+    if (!ready || !containerRef.current) return;
+
+    const game = startGame(containerRef.current, layersRef.current);
 
     const focusCanvas = () => {
       const canvas = containerRef.current?.querySelector('canvas') as HTMLCanvasElement | null;
@@ -22,7 +51,13 @@ export default function PhaserGame() {
       containerRef.current?.removeEventListener('pointerdown', focusCanvas);
       game.destroy(true);
     };
-  }, []);
+  }, [ready]);
 
-  return <div className="bg-neutral_contrast border-b-8 border-r-8 border-l-4 border-t-4 border-black"> <div ref={containerRef} tabIndex={0} /> </div>;
+  if (!ready) return null;
+
+  return (
+    <div className="bg-neutral_contrast border-b-8 border-r-8 border-l-4 border-t-4 border-black">
+      <div ref={containerRef} tabIndex={0} />
+    </div>
+  );
 }

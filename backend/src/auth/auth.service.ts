@@ -27,6 +27,7 @@ export interface AuthTokensResponse extends OtpTokens {
     coalition: string | null;
     level: number;
     role: string;
+    characterCreated: boolean;
   };
 }
 
@@ -129,6 +130,7 @@ export class AuthService {
         coalition: user.coalition,
         level: user.level,
         role: user.role,
+        characterCreated: user.characterCreated,
       },
     };
   }

@@ -6,6 +6,26 @@ import { setupMap } from "./setupMap";
 import { cartToIso } from "./isometricUtils";
 import { toLocal, isValidTile } from "./mapCoords";
 import { Player } from "./player";
+import type { CharacterLayers } from "../api/character";
+
+export type { CharacterLayers };
+
+const LAYER_ORDER: (keyof CharacterLayers)[] = ['skin', 'eyes', 'hair', 'clothes', 'accessory'];
+const FRAME_WIDTH  = 64;
+const FRAME_HEIGHT = 64;
+
+// Module-level store so GameScene can read it without constructor gymnastics
+let _characterLayers: CharacterLayers = {
+  skin: 'light',
+  eyes: 'blue',
+  hair: 'black_short',
+  clothes: 'tshirt_white',
+  accessory: 'none',
+};
+
+export function getCharacterLayers(): CharacterLayers {
+  return _characterLayers;
+}
 
 class GameScene extends Phaser.Scene {
 	private offsetX = 0;
@@ -15,14 +35,21 @@ class GameScene extends Phaser.Scene {
 	private player?: Player;
 
 	preload() {
-		this.load.image("floor",			"assets/tilesets/floors.png");
-		this.load.image("props",			"assets/tilesets/Props.png");
-		this.load.image("walls",			"assets/tilesets/walls.png");
-		this.load.image("plusButton",		"assets/buttons/plusButton.png");
-		this.load.image("minusButton",		"assets/buttons/minusButton.png");
-		this.load.image("highlight",		"assets/highlight.png");
-		this.load.image("player",			"assets/character/SE.png");
-		this.load.tilemapTiledJSON("map",	"assets/cluster/map1.tmj");
+		this.load.image("floor",       "assets/tilesets/floors.png");
+		this.load.image("props",       "assets/tilesets/Props.png");
+		this.load.image("walls",       "assets/tilesets/walls.png");
+		this.load.image("plusButton",  "assets/buttons/plusButton.png");
+		this.load.image("minusButton", "assets/buttons/minusButton.png");
+		this.load.image("highlight",   "assets/highlight.png");
+		this.load.tilemapTiledJSON("map", "assets/cluster/map1.tmj");
+
+		// Load one spritesheet per layer (4-frame strip: NW, NE, SW, SE)
+		const layers = getCharacterLayers();
+		for (const layer of LAYER_ORDER) {
+			const key = `char_${layer}`;
+			const path = `assets/character/layers/${layer}/${layers[layer]}.png`;
+			this.load.spritesheet(key, path, { frameWidth: FRAME_WIDTH, frameHeight: FRAME_HEIGHT });
+		}
 	}
 
 	create() {
@@ -46,12 +73,9 @@ class GameScene extends Phaser.Scene {
 		this.highlight.setVisible(false);
 
 		// ── Spawn player at local (0, 0) — the entrance tile ─────────────────
-		// To spawn elsewhere, just change these two numbers to any valid
-		// local room coordinates. isValidTile() will tell you if a coord is walkable.
 		this.player = new Player(this, this.offsetX, this.offsetY, 0, 0);
 
 		// ── Click to move ─────────────────────────────────────────────────────
-		// Convert the click's world tile coord → local, validate, then move.
 		this.input.on("pointerdown", (pointer: Phaser.Input.Pointer) => {
 			const tile = this.floorsLayer?.getTileAtWorldXY(
 				pointer.worldX,
@@ -92,7 +116,9 @@ class GameScene extends Phaser.Scene {
 	}
 }
 
-export function startGame(parent: string | HTMLElement): Phaser.Game {
+export function startGame(parent: string | HTMLElement, characterLayers?: CharacterLayers): Phaser.Game {
+	if (characterLayers) _characterLayers = characterLayers;
+
 	return new Phaser.Game({
 		type: Phaser.AUTO,
 		parent,
