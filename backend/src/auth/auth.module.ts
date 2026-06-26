@@ -20,7 +20,6 @@ import { OtpModule } from './otp/otp.module';
     FortyTwoModule,
     OtpModule,
     PassportModule,
-    // Configuração assíncrona do JWT usando ConfigService
     JwtModule.registerAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
