@@ -45,6 +45,7 @@ export default function CharacterCreation() {
   const [error, setError] = useState('')
   const [profile, setProfile] = useState<Profile | null>(null)
   const [profileLoading, setProfileLoading] = useState(true)
+  const [tosAccepted, setTosAccepted] = useState(false)
 
   useEffect(() => {
     fetch('/assets/character/manifest.json')
@@ -175,10 +176,30 @@ export default function CharacterCreation() {
 
         {error && <p className="text-red-500 text-xs font-pressStart">{error}</p>}
 
+        <label className="mt-auto flex items-start gap-2 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={tosAccepted}
+            onChange={(e) => setTosAccepted(e.target.checked)}
+            className="mt-0.5 accent-black"
+          />
+          <p className="font-pressStart text-xs text-contrast leading-relaxed">
+            I read the{' '}
+            <a
+              href="/ToS"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="underline hover:opacity-60"
+            >
+              Terms of Service
+            </a>
+          </p>
+        </label>
+
         <button
           onClick={handleConfirm}
-          disabled={saving}
-          className="mt-auto px-4 py-3 bg-black text-white font-pressStart text-xs disabled:opacity-50"
+          disabled={saving || !tosAccepted}
+          className="px-4 py-3 bg-black text-white font-pressStart text-xs disabled:opacity-50"
         >
           {saving ? 'Saving...' : 'Confirm ✓'}
         </button>
