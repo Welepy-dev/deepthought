@@ -23,19 +23,19 @@ export class MailService {
       from: this.configService.get<string>('EMAIL_USER'),
       to,
       
-      subject: 'Verificação da conta',
+      subject: 'Account Verification - Your OTP Code',
 
       html: `
-        <h2>Bem-vindo à Deepthought</h2>
+        <h2>Welcome to Deepthought</h2>
 
-        <p>O seu código OTP é:</p>
+        <p>Your OTP code is:</p>
 
         <h1>${code}</h1>
 
-        <p>Este código expira em 10 minutos.</p>
+        <p>This code will expire in 10 minutes.</p>
       `,
     });
 
-    this.logger.log(`OTP enviado para ${to}`);
+    this.logger.log(`OTP sent to ${to}`);
   }
 }
