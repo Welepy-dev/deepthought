@@ -1,17 +1,9 @@
-/**
- * Interfaces que representam as respostas da API v2 da 42.
- * Usadas para tipar corretamente os dados recebidos antes de os mapear
- * para os modelos internos da aplicação.
- */
-
-/** Representa um campus na resposta da API 42 */
 export interface FortyTwoCampus {
   id: number;
   name: string;
   country: string;
 }
 
-/** Representa a imagem de perfil do utilizador na API 42 */
 export interface FortyTwoImage {
   link: string;
   versions: {
@@ -22,7 +14,6 @@ export interface FortyTwoImage {
   };
 }
 
-/** Representa o cursus (42cursus, piscine, etc.) associado ao utilizador */
 export interface FortyTwoCursusUser {
   id: number;
   grade: string | null;
@@ -41,12 +32,11 @@ export interface FortyTwoCursusUser {
   };
 }
 
-/** Representa um projeto associado ao utilizador na API 42 */
 export interface FortyTwoProjectUser {
   id: number;
   occurrence: number;
   final_mark: number | null;
-  status: string; // 'finished' | 'in_progress' | 'searching_a_group' | 'creating_group' | 'waiting_for_correction' | 'failed'
+  status: string;
   validated: boolean | null;
   current_team_id: number | null;
   project: {
@@ -63,7 +53,6 @@ export interface FortyTwoProjectUser {
   updated_at: string;
 }
 
-/** Representa a coligação do utilizador */
 export interface FortyTwoCoalition {
   id: number;
   name: string;
@@ -73,11 +62,9 @@ export interface FortyTwoCoalition {
   color: string;
   score: number;
   user_id: number;
-  /** Alguns payloads de /users/:id/coalitions incluem cursus_id; usamos quando existir. */
   cursus_id?: number;
 }
 
-/** Resposta completa do endpoint /v2/me da API 42 */
 export interface FortyTwoProfile {
   id: number;
   email: string;
@@ -103,7 +90,6 @@ export interface FortyTwoProfile {
   updated_at: string;
 }
 
-/** DTO interno mapeado da API 42 para uso nos serviços */
 export interface MappedFortyTwoProfile {
   fortyTwoId: number;
   login: string;
@@ -111,14 +97,12 @@ export interface MappedFortyTwoProfile {
   displayName: string;
   avatar: string | null;
   campus: string | null;
-  /** Nome/slug normalizado da coalition da 42, ou null quando a API não devolve uma. */
   coalition: string | null;
   level: number;
   evalPoints: number;
   projects: MappedProject[];
 }
 
-/** Projeto mapeado da API 42 */
 export interface MappedProject {
   slug: string;
   name: string;
