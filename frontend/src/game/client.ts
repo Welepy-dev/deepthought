@@ -73,6 +73,8 @@ class GameScene extends Phaser.Scene {
 		setupInput(this);
 		setupUI(this, this.cameras.main);
 
+		this.events.on("sidebar:feedback", () => window.open("/Feedback", "_blank"));
+
 		this.highlight = this.add.image(0, 0, "highlight").setOrigin(0, 0);
 		this.highlight.setVisible(false);
 

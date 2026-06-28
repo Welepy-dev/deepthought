@@ -12,6 +12,7 @@ import CharacterCreation from "../pages/CharacterCreation";
 
 import PrivacyPolicy from "../policy_pages/PrivacyPolicy";
 import ToS from "../policy_pages/ToS";
+import Feedback from "../pages/Feedback";
 
 import ProtectedRoute from '../components/ProtectedRoute'
 
@@ -34,6 +35,11 @@ export function AppRouter() {
 			<Route
 				path="/OTPEmail"
 				element={<App CustomComponent={OTPEmail} />}
+			/>
+
+			<Route
+				path="/Feedback"
+				element={<App CustomComponent={Feedback} />}
 			/>
 
 			<Route

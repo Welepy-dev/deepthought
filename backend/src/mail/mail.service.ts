@@ -18,6 +18,22 @@ export class MailService {
     });
   }
 
+  async sendFeedbackEmail(name: string, email: string, title: string, message: string): Promise<void> {
+    await this.transporter.sendMail({
+      from: this.configService.get<string>('EMAIL_USER'),
+      to: 'mwsilva.contato@gmail.com',
+      replyTo: email,
+      subject: `[Feedback] ${title} — from ${name}`,
+      html: `
+        <h2>${title}</h2>
+        <p><strong>From:</strong> ${name} &lt;${email}&gt;</p>
+        <p><strong>Message:</strong></p>
+        <p>${message.replace(/\n/g, '<br>')}</p>
+      `,
+    });
+    this.logger.log(`Feedback email sent from ${email}`);
+  }
+
   async sendOtpEmail(to: string, code: string): Promise<void> {
     await this.transporter.sendMail({
       from: this.configService.get<string>('EMAIL_USER'),
