@@ -134,6 +134,11 @@ export class FortyTwoService {
       level: mainCursus?.level ?? 0,
       evalPoints: profile.avaluation_point ?? 0,
       projects,
+      kind: profile.kind,
+      cursusUsers: profile.cursus_users.map((cu) => ({
+        slug: cu.cursus.slug,
+        end_at: cu.end_at,
+      })),
     };
   }
 
