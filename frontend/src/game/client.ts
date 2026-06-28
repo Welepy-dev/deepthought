@@ -1,6 +1,6 @@
 import Phaser from "phaser";
 import { setupCamera } from "./setupCamera";
-import { setupUI } from "./setupUI";
+import { setupUI, SIDEBAR_ICONS } from "./setupUI";
 import { setupInput } from "./setupInput";
 import { setupMap } from "./setupMap";
 import { cartToIso } from "./isometricUtils";
@@ -42,6 +42,10 @@ class GameScene extends Phaser.Scene {
 		this.load.image("minusButton", "assets/buttons/minusButton.png");
 		this.load.image("highlight",   "assets/highlight.png");
 		this.load.tilemapTiledJSON("map", "assets/cluster/map1.tmj");
+
+		for (const { key, path } of SIDEBAR_ICONS) {
+			this.load.image(key, path);
+		}
 
 		// Load one spritesheet per layer (4-frame strip: NW, NE, SW, SE)
 		const layers = getCharacterLayers();
