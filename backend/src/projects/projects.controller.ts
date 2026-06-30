@@ -53,6 +53,16 @@ export class ProjectsController {
   }
 
   /**
+   * GET /projects/catalog
+   * Retorna todos os projectos disponíveis na plataforma (id, name, slug).
+   * NOTA: deve vir antes de GET /projects/:id para evitar conflito de rota.
+   */
+  @Get('catalog')
+  findCatalog() {
+    return this.projectsService.findCatalog();
+  }
+
+  /**
    * GET /projects/help/open
    * Lista pedidos de ajuda não resolvidos.
    * NOTA: deve vir antes de GET /projects/:id para evitar conflito de rota.

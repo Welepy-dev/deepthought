@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { startGame } from "../game/client";
 import { fetchMe } from "../api/character";
 import type { CharacterLayers } from "../api/character";
+import Sidebar from "./sidebar/Sidebar";
 
 const DEFAULT_LAYERS: CharacterLayers = {
   skin: 'light',
@@ -56,8 +57,9 @@ export default function PhaserGame() {
   if (!ready) return null;
 
   return (
-    <div className="bg-neutral_contrast border-b-8 border-r-8 border-l-4 border-t-4 border-black">
+    <div className="relative inline-block bg-neutral_contrast border-b-8 border-r-8 border-l-4 border-t-4 border-black">
       <div ref={containerRef} tabIndex={0} />
+      <Sidebar />
     </div>
   );
 }

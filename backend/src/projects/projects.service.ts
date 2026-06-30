@@ -34,6 +34,17 @@ export class ProjectsService {
   ) {}
 
   /**
+   * Retorna o catálogo de todos os projectos disponíveis na plataforma.
+   * GET /projects/catalog
+   */
+  async findCatalog() {
+    return this.prisma.project.findMany({
+      select: { id: true, name: true, slug: true },
+      orderBy: { name: 'asc' },
+    });
+  }
+
+  /**
    * Lista projectos de todos os utilizadores com filtros e paginação.
    * GET /projects
    */

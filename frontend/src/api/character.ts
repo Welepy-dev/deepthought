@@ -29,7 +29,9 @@ export async function fetchMe(): Promise<{
   campus: string | null
   coalition: string | null
   level: number
+  xp: number
   evalPoints: number
+  role: string
   bio: string | null
   characterCreated: boolean
   characterLayers: CharacterLayers | null
