@@ -229,6 +229,21 @@ export class OtpService {
     return { success: true, accessToken, refreshToken };
   }
 
+    /**
+   * Invalida o refresh token do utilizador.
+   * Depois deste logout, o refresh token deixa de poder ser utilizado.
+   */
+  async logout(userId: string): Promise<void> {
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: {
+        refreshTokenHash: null,
+      },
+    });
+
+    this.logger.log(`User ${userId} logged out`);
+  }
+
   /** Remove o OTP do utilizador quando expira ou quando deixa de ser utilizável. */
   private async clearOtp(userId: string): Promise<void> {
     /** Prisma actualiza apenas os campos OTP e preserva o resto do perfil. */

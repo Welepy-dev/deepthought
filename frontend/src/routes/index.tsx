@@ -13,6 +13,9 @@ import ToS from "../policy_pages/ToS";
 
 import ProtectedRoute from '../components/ProtectedRoute'
 
+import { logout } from "../auth/logout";
+import { useNavigate } from "react-router-dom";
+
 export function AppRouter() {
 
 	return (

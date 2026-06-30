@@ -15,7 +15,7 @@ import { AuthService } from './auth.service';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { FortyTwoOAuthExceptionFilter } from './filters/forty-two-oauth-exception.filter';
 import { OtpService, OtpTokens } from './otp/otp.service';
-
+import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import type { Response } from 'express';
 
 @Controller('auth')
@@ -88,5 +88,30 @@ export class AuthController {
   async refresh(@Body() dto: RefreshTokenDto): Promise<OtpTokens> {
     /** Reutiliza a validação/hash/rotação de tokens existente no OtpService. */
     return this.otpService.refreshTokens(dto.refreshToken);
+  }
+
+  @Post('logout')
+  @UseGuards(JwtAuthGuard)
+  async logout(
+    @Req() req,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    await this.otpService.logout(req.user.sub);
+
+    res.clearCookie('access_token', {
+      httpOnly: true,
+      secure: true,
+      sameSite: 'lax',
+    });
+
+    res.clearCookie('refresh_token', {
+      httpOnly: true,
+      secure: true,
+      sameSite: 'lax',
+    });
+
+    return {
+      success: true,
+    };
   }
 }

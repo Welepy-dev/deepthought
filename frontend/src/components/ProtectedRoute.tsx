@@ -52,6 +52,7 @@ export default function ProtectedRoute({ children }: ProtectedRouteProps) {
         setCanAccess(refreshed)
       } catch {
         localStorage.removeItem('token')
+        localStorage.removeItem("refreshToken")
         setCanAccess(false)
       } finally {
         setIsRefreshing(false)
@@ -66,7 +67,7 @@ export default function ProtectedRoute({ children }: ProtectedRouteProps) {
   }
 
   if (!canAccess) {
-    return <Navigate to="/login" replace />
+    return <Navigate to="/" replace />
   }
 
   return <>{children}</>

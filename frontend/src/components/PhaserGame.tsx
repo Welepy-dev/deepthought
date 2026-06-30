@@ -1,4 +1,3 @@
-// PhaserGame.jsx - bridge, nothing more
 import { useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { startGame } from "../game/client";
@@ -27,5 +26,31 @@ export default function PhaserGame() {
     };
   }, []);
 
-  return <div className="bg-neutral_contrast border-b-8 border-r-8 border-l-4 border-t-4 border-black"> <div ref={containerRef} tabIndex={0} /> </div>;
+  async function handleLogout() {
+    await logout();
+    navigate("/", { replace: true });
+  }
+
+  return (
+    <div className="relative w-full h-full bg-neutral_contrast border-b-8 border-r-8 border-l-4 border-t-4 border-black">
+
+      {/* BOTÃO LOGOUT */}
+      <button
+        onClick={handleLogout}
+        style={{
+          position: "absolute",
+          top: 10,
+          right: 10,
+          zIndex: 9999,
+          padding: "8px 12px",
+          cursor: "pointer"
+        }}
+      >
+        Logout
+      </button>
+
+      {/* GAME CONTAINER */}
+      <div ref={containerRef} tabIndex={0} />
+    </div>
+  );
 }
