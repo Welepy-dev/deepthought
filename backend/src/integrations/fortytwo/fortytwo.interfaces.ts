@@ -92,7 +92,7 @@ export interface FortyTwoProfile {
   projects_users: FortyTwoProjectUser[];
   campus: FortyTwoCampus[];
   campus_users: Array<{ id: number; user_id: number; campus_id: number; is_primary: boolean }>;
-  avaluation_point: number;
+  correction_point: number;
   wallet: number;
   pool_month: string | null;
   pool_year: string | null;

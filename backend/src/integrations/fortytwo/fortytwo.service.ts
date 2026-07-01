@@ -132,7 +132,7 @@ export class FortyTwoService {
       campus: primaryCampus,
       coalition: coalitionName,
       level: mainCursus?.level ?? 0,
-      evalPoints: profile.avaluation_point ?? 0,
+      evalPoints: profile.correction_point ?? 0,
       projects,
       kind: profile.kind,
       cursusUsers: profile.cursus_users.map((cu) => ({
