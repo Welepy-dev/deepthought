@@ -1,6 +1,15 @@
 import Phaser from "phaser";
 import { getSocket } from "../api/socket";
-import { Player, type Direction } from "./player";
+import {
+  Player,
+  type Direction,
+  CHARACTER_LAYER_ORDER,
+  CHARACTER_FRAME_WIDTH,
+  CHARACTER_FRAME_HEIGHT,
+  DEFAULT_CHARACTER_LAYERS,
+  characterTextureKey,
+  characterTexturePath,
+} from "./player";
 import type { CharacterLayers } from "../api/character";
 
 interface PresenceEntry {
@@ -20,6 +29,8 @@ interface PresenceEntry {
  */
 export class RemotePlayerSync {
   private remotePlayers = new Map<string, Player>();
+  /** Jogadores cujas spritesheets ainda estão a carregar (spawn adiado). */
+  private pendingSpawns = new Set<string>();
   private scene: Phaser.Scene;
   private offsetX: number;
   private offsetY: number;
@@ -77,6 +88,10 @@ export class RemotePlayerSync {
       player.destroy();
       this.remotePlayers.delete(userId);
     }
+
+    for (const userId of this.pendingSpawns) {
+      if (!seen.has(userId)) this.pendingSpawns.delete(userId);
+    }
   };
 
   private handleJoin = (entry: PresenceEntry): void => {
@@ -85,6 +100,7 @@ export class RemotePlayerSync {
   };
 
   private handleLeave = ({ userId }: { userId: string }): void => {
+    this.pendingSpawns.delete(userId);
     this.remotePlayers.get(userId)?.destroy();
     this.remotePlayers.delete(userId);
   };
@@ -104,16 +120,55 @@ export class RemotePlayerSync {
   };
 
   private spawn(entry: PresenceEntry): void {
-    if (this.remotePlayers.has(entry.userId)) return;
-    const player = new Player(
-      this.scene,
-      this.offsetX,
-      this.offsetY,
-      entry.lx,
-      entry.ly,
-      entry.displayName,
-    );
-    this.remotePlayers.set(entry.userId, player);
+    if (this.remotePlayers.has(entry.userId) || this.pendingSpawns.has(entry.userId)) return;
+
+    const layers = entry.characterLayers ?? DEFAULT_CHARACTER_LAYERS;
+
+    // As spritesheets deste jogador podem ainda não estar carregadas (cada
+    // variante é uma textura própria); o spawn só acontece quando existirem.
+    this.pendingSpawns.add(entry.userId);
+    this.ensureTextures(layers, () => {
+      // Saiu entretanto (player:leave/snapshot) ou o sync foi destruído.
+      if (!this.pendingSpawns.delete(entry.userId)) return;
+      if (this.remotePlayers.has(entry.userId)) return;
+
+      const player = new Player(
+        this.scene,
+        this.offsetX,
+        this.offsetY,
+        entry.lx,
+        entry.ly,
+        entry.displayName,
+        layers,
+        entry.direction,
+      );
+      this.remotePlayers.set(entry.userId, player);
+    });
+  }
+
+  /** Carrega em runtime as variantes de spritesheet ainda desconhecidas. */
+  private ensureTextures(layers: CharacterLayers, onReady: () => void): void {
+    let queued = false;
+
+    for (const layer of CHARACTER_LAYER_ORDER) {
+      const key = characterTextureKey(layer, layers[layer]);
+      if (this.scene.textures.exists(key)) continue;
+      this.scene.load.spritesheet(key, characterTexturePath(layer, layers[layer]), {
+        frameWidth: CHARACTER_FRAME_WIDTH,
+        frameHeight: CHARACTER_FRAME_HEIGHT,
+      });
+      queued = true;
+    }
+
+    if (!queued) {
+      onReady();
+      return;
+    }
+
+    // COMPLETE dispara quando a fila esvazia; ficheiros de spawns concorrentes
+    // entram na mesma fila, por isso todos os handlers vêem as texturas prontas.
+    this.scene.load.once(Phaser.Loader.Events.COMPLETE, onReady);
+    this.scene.load.start();
   }
 
   /** Detaches listeners and destroys all remote player sprites. */
@@ -125,6 +180,7 @@ export class RemotePlayerSync {
     socket?.off('player:leave', this.handleLeave);
     socket?.off('player:move', this.handleMove);
 
+    this.pendingSpawns.clear();
     for (const player of this.remotePlayers.values()) player.destroy();
     this.remotePlayers.clear();
   }

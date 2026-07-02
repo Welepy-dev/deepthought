@@ -5,7 +5,15 @@ import { setupInput } from "./setupInput";
 import { setupMap } from "./setupMap";
 import { cartToIso } from "./isometricUtils";
 import { toLocal, isValidTile } from "./mapCoords";
-import { Player, type Direction } from "./player";
+import {
+	Player,
+	type Direction,
+	CHARACTER_LAYER_ORDER,
+	CHARACTER_FRAME_WIDTH,
+	CHARACTER_FRAME_HEIGHT,
+	characterTextureKey,
+	characterTexturePath,
+} from "./player";
 import { RemotePlayerSync } from "./remotePlayerSync";
 import type { CharacterLayers } from "../api/character";
 
@@ -22,10 +30,6 @@ function directionFromDelta(dx: number, dy: number): Direction {
 // Module-level so GameScene can read it without constructor gymnastics
 let _localUserId = '';
 let _localDisplayName: string | undefined;
-
-const LAYER_ORDER: (keyof CharacterLayers)[] = ['skin', 'eyes', 'hair', 'clothes', 'accessory'];
-const FRAME_WIDTH  = 64;
-const FRAME_HEIGHT = 64;
 
 // Module-level store so GameScene can read it without constructor gymnastics
 let _characterLayers: CharacterLayers = {
@@ -57,12 +61,17 @@ class GameScene extends Phaser.Scene {
 		this.load.image("highlight",   "assets/highlight.png");
 		this.load.tilemapTiledJSON("map", "assets/cluster/map1.tmj");
 
-		// Load one spritesheet per layer (4-frame strip: NW, NE, SW, SE)
+		// Load one spritesheet per layer (4-frame strip: NW, NE, SW, SE).
+		// Keys are per-variant ("char_skin_light") so remote players with other
+		// appearances can load their own variants without key collisions.
 		const layers = getCharacterLayers();
-		for (const layer of LAYER_ORDER) {
-			const key = `char_${layer}`;
-			const path = `assets/character/layers/${layer}/${layers[layer]}.png`;
-			this.load.spritesheet(key, path, { frameWidth: FRAME_WIDTH, frameHeight: FRAME_HEIGHT });
+		for (const layer of CHARACTER_LAYER_ORDER) {
+			const key = characterTextureKey(layer, layers[layer]);
+			if (this.textures.exists(key)) continue;
+			this.load.spritesheet(key, characterTexturePath(layer, layers[layer]), {
+				frameWidth: CHARACTER_FRAME_WIDTH,
+				frameHeight: CHARACTER_FRAME_HEIGHT,
+			});
 		}
 	}
 
@@ -87,7 +96,10 @@ class GameScene extends Phaser.Scene {
 		this.highlight.setVisible(false);
 
 		// ── Spawn player at local (0, 0) — the entrance tile ─────────────────
-		this.player = new Player(this, this.offsetX, this.offsetY, 0, 0, _localDisplayName);
+		this.player = new Player(
+			this, this.offsetX, this.offsetY, 0, 0,
+			_localDisplayName, getCharacterLayers(),
+		);
 
 		// ── Multiplayer: spawn/despawn/move remote players via the world gateway ──
 		if (_localUserId) {

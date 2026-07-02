@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type ReactElement } from 'react'
 import { fetchMe } from '../../api/character'
 import SidebarNav, { type PanelId } from './SidebarNav'
 import ChatPanel          from './panels/ChatPanel'
@@ -23,7 +23,7 @@ interface User {
   bio: string | null
 }
 
-function PanelContent({ panel, user }: { panel: PanelId; user: User | null }): JSX.Element {
+function PanelContent({ panel, user }: { panel: PanelId; user: User | null }): ReactElement {
   switch (panel) {
     case 'chat':          return <ChatPanel />
     case 'feedback':      return <FeedbackPanel />

@@ -27,7 +27,43 @@ import { TILE_HEIGHT } from "./constants";
  *   depth = 3 + (wx + wy) * 0.01, keeping us between walls (1) and props (2).
  */
 
-const LAYER_KEYS = ['skin', 'eyes', 'hair', 'clothes', 'accessory'] as const;
+import type { CharacterLayers } from "../api/character";
+
+/** Ordem de desenho das camadas do avatar (base → topo). */
+export const CHARACTER_LAYER_ORDER: (keyof CharacterLayers)[] = [
+	'skin', 'eyes', 'hair', 'clothes', 'accessory',
+];
+
+export const CHARACTER_FRAME_WIDTH  = 64;
+export const CHARACTER_FRAME_HEIGHT = 64;
+
+/** Aparência usada quando o servidor não tem characterLayers para um jogador. */
+export const DEFAULT_CHARACTER_LAYERS: CharacterLayers = {
+	skin: 'light',
+	eyes: 'blue',
+	hair: 'black_short',
+	clothes: 'tshirt_white',
+	accessory: 'none',
+};
+
+/**
+ * As texturas são partilhadas por variante ("char_skin_light"), não por
+ * jogador, para que jogadores remotos com aparências diferentes possam
+ * coexistir sem recarregar spritesheets duplicadas.
+ */
+export function characterTextureKey(
+	layer: keyof CharacterLayers,
+	variant: string,
+): string {
+	return `char_${layer}_${variant}`;
+}
+
+export function characterTexturePath(
+	layer: keyof CharacterLayers,
+	variant: string,
+): string {
+	return `assets/character/layers/${layer}/${variant}.png`;
+}
 
 export type Direction = 'NW' | 'NE' | 'SW' | 'SE';
 
@@ -52,19 +88,23 @@ export class Player {
 		startLX: number,
 		startLY: number,
 		displayName?: string,
+		layers: CharacterLayers = DEFAULT_CHARACTER_LAYERS,
+		direction?: Direction,
 	) {
 		this.scene = scene;
 		this.offsetX = offsetX;
 		this.offsetY = offsetY;
 		this.lx      = startLX;
 		this.ly      = startLY;
+		if (direction) this.direction = direction;
 
 		this.container = scene.add.container(0, 0);
 
-		for (const layer of LAYER_KEYS) {
-			const key = `char_${layer}`;
-			// Fallback to frame 3 (SE) on creation; setLocalTile will set the right frame
-			const sprite = scene.add.sprite(0, 0, key, DIRECTION_FRAME['SE']);
+		for (const layer of CHARACTER_LAYER_ORDER) {
+			const key = characterTextureKey(layer, layers[layer]);
+			// Defensivo: variante em falta (não carregada/ficheiro inexistente) é ignorada
+			if (!scene.textures.exists(key)) continue;
+			const sprite = scene.add.sprite(0, 0, key, DIRECTION_FRAME[this.direction]);
 			sprite.setOrigin(0.5, 1); // anchor at feet
 			this.sprites.push(sprite);
 			this.container.add(sprite);

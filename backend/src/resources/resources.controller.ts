@@ -11,6 +11,7 @@ import {
   ValidationPipe,
   HttpCode,
   HttpStatus,
+  ParseIntPipe,
 } from '@nestjs/common';
 import { ResourcesService } from './resources.service';
 import { CreateResourceDto, ResourcesQueryDto } from './dto/resources.dto';
@@ -72,8 +73,8 @@ export class ResourcesController {
   @Get('projects/:id/resources')
   findByProject(
     @Param('id') projectId: string,
-    @Query('page') page?: number,
-    @Query('limit') limit?: number,
+    @Query('page', new ParseIntPipe({ optional: true })) page?: number,
+    @Query('limit', new ParseIntPipe({ optional: true })) limit?: number,
   ) {
     return this.resourcesService.findByProject(projectId, page, limit);
   }

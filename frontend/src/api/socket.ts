@@ -17,8 +17,17 @@ export function connectSocket(): Socket {
     reconnectionDelayMax: 5000,
   })
 
-  socket.on('client:auth_error', () => {
-    refreshToken()
+  // O gateway desliga com disconnect(true) quando o JWT do handshake é
+  // inválido; com razão 'io server disconnect' o socket.io NÃO religa sozinho.
+  // Renovamos o token e religamos manualmente (a função auth acima relê o
+  // localStorage). Se o refresh falhar (ex.: banido), não religa — sem loop.
+  socket.on('disconnect', (reason) => {
+    if (reason !== 'io server disconnect') return
+    void refreshToken()
+      .then((ok) => {
+        if (ok) socket?.connect()
+      })
+      .catch(() => {})
   })
 
   return socket

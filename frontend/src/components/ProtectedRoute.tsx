@@ -67,7 +67,8 @@ export default function ProtectedRoute({ children }: ProtectedRouteProps) {
   }
 
   if (!canAccess) {
-    return <Navigate to="/login" replace />
+    // "/" é a página de sign-in; não existe rota /login (apiClient usa o mesmo destino).
+    return <Navigate to="/" replace />
   }
 
   return <>{children}</>

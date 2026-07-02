@@ -11,6 +11,7 @@ import {
   ValidationPipe,
   HttpCode,
   HttpStatus,
+  ParseIntPipe,
 } from '@nestjs/common';
 import { ProjectsService } from './projects.service';
 import {
@@ -69,8 +70,8 @@ export class ProjectsController {
    */
   @Get('help/open')
   findOpenHelpRequests(
-    @Query('page') page?: number,
-    @Query('limit') limit?: number,
+    @Query('page', new ParseIntPipe({ optional: true })) page?: number,
+    @Query('limit', new ParseIntPipe({ optional: true })) limit?: number,
   ) {
     return this.projectsService.findOpenHelpRequests(page, limit);
   }
