@@ -38,6 +38,13 @@ export class RemotePlayerSync {
     socket.on('player:join', this.handleJoin);
     socket.on('player:leave', this.handleLeave);
     socket.on('player:move', this.handleMove);
+
+    // The snapshot the server pushes on connect can arrive while the scene is
+    // still preloading (before these listeners exist) and be dropped, so ask
+    // for the roster now that we can actually handle it. Re-request on every
+    // (re)connect so a dropped connection also resyncs.
+    socket.emit('player:state:request');
+    socket.on('connect', this.handleReconnect);
   }
 
   /** Reports the local player's new tile/direction to the server. */
@@ -45,10 +52,30 @@ export class RemotePlayerSync {
     getSocket()?.emit('player:move', { lx, ly, direction });
   }
 
+  private handleReconnect = (): void => {
+    getSocket()?.emit('player:state:request');
+  };
+
+  /** Authoritative roster snapshot: spawn missing, resync existing, drop gone. */
   private handleState = ({ players }: { players: PresenceEntry[] }): void => {
+    const seen = new Set<string>();
+
     for (const entry of players) {
       if (entry.userId === this.localUserId) continue;
-      this.spawn(entry);
+      seen.add(entry.userId);
+
+      const existing = this.remotePlayers.get(entry.userId);
+      if (existing) {
+        existing.moveToTile(entry.lx, entry.ly, entry.direction);
+      } else {
+        this.spawn(entry);
+      }
+    }
+
+    for (const [userId, player] of this.remotePlayers) {
+      if (seen.has(userId)) continue;
+      player.destroy();
+      this.remotePlayers.delete(userId);
     }
   };
 
@@ -92,6 +119,7 @@ export class RemotePlayerSync {
   /** Detaches listeners and destroys all remote player sprites. */
   destroy(): void {
     const socket = getSocket();
+    socket?.off('connect', this.handleReconnect);
     socket?.off('player:state', this.handleState);
     socket?.off('player:join', this.handleJoin);
     socket?.off('player:leave', this.handleLeave);

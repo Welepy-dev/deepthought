@@ -115,6 +115,20 @@ export class WorldGateway implements OnGatewayConnection, OnGatewayDisconnect {
     this.logger.log(`Player disconnected: ${userId}`);
   }
 
+  /**
+   * O snapshot enviado em handleConnection pode chegar antes de o cliente
+   * ter registado listeners (a cena Phaser ainda está a carregar assets),
+   * sendo descartado silenciosamente. O cliente pede o roster quando está
+   * de facto pronto a renderizá-lo.
+   */
+  @SubscribeMessage('player:state:request')
+  handleStateRequest(@ConnectedSocket() client: Socket): void {
+    const userId = (client.data as AuthedSocketData)?.userId;
+    if (!userId) return;
+
+    client.emit('player:state', { players: this.presence.list(userId) });
+  }
+
   @SubscribeMessage('player:move')
   handlePlayerMove(
     @ConnectedSocket() client: Socket,
