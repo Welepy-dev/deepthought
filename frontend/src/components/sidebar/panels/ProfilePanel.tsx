@@ -1,3 +1,6 @@
+import { useNavigate } from 'react-router-dom'
+import { logout } from '../../../auth/logout'
+
 interface User {
   id: string
   login: string
@@ -26,6 +29,15 @@ function Row({ label, value }: { label: string; value: string | number | null })
 }
 
 export default function ProfilePanel({ user }: Props) {
+  const navigate = useNavigate()
+
+  const handleLogout = () => {
+    logout()
+    // Navegar para fora de /Game desmonta o PhaserGame, que já trata de
+    // destruir o jogo e desligar o socket no cleanup do useEffect.
+    navigate('/', { replace: true })
+  }
+
   if (!user) {
     return (
       <div className="flex items-center justify-center h-full">
@@ -71,6 +83,16 @@ export default function ProfilePanel({ user }: Props) {
             <p className="font-pressStart text-[10px] text-white leading-relaxed">{user.bio}</p>
           </div>
         )}
+      </div>
+
+      <div className="mt-auto p-4">
+        <button
+          type="button"
+          onClick={handleLogout}
+          className="w-full px-4 py-2 bg-black text-red-400 font-pressStart text-[10px] border-b-4 border-r-4 border-l-2 border-t-2 border-neutral_contrast"
+        >
+          Logout
+        </button>
       </div>
     </div>
   )
