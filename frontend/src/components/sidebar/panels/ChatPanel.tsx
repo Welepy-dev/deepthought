@@ -12,6 +12,10 @@ import { fetchPublicProfile, type PublicProfile } from '../../../api/users'
 interface Props {
   /** Utilizador autenticado (para alinhar mensagens próprias e receipts). */
   currentUserId: string | null
+  /** Pedido externo (Social/Projects) para abrir a DM com este utilizador. */
+  pendingDmUserId: string | null
+  /** Sinaliza que o pedido de DM externo foi consumido. */
+  onDmConsumed: () => void
 }
 
 type Tab = 'global' | 'dms'
@@ -19,7 +23,7 @@ type Tab = 'global' | 'dms'
 const TYPING_TIMEOUT_MS = 2500
 const TYPING_EMIT_INTERVAL_MS = 1500
 
-export default function ChatPanel({ currentUserId }: Props) {
+export default function ChatPanel({ currentUserId, pendingDmUserId, onDmConsumed }: Props) {
   const [tab, setTab] = useState<Tab>('global')
   const [rooms, setRooms] = useState<ChatRoomSummary[]>([])
   const [activeRoom, setActiveRoom] = useState<ChatRoomSummary | null>(null)
@@ -83,6 +87,24 @@ export default function ChatPanel({ currentUserId }: Props) {
       if (room) getSocket()?.emit('chat:leave', { roomId: room.id })
     }
   }, [openRoom])
+
+  /** DM pedida a partir de outro painel (Social, Projects, popover). */
+  useEffect(() => {
+    if (!pendingDmUserId) return
+    openDm(pendingDmUserId)
+      .then((room) => {
+        setTab('dms')
+        setRooms((prev) =>
+          prev.some((r) => r.id === room.id)
+            ? prev
+            : [...prev, { ...room, unreadCount: 0 }],
+        )
+        openRoom(room)
+      })
+      .catch(() => {})
+      .finally(onDmConsumed)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pendingDmUserId])
 
   /** Listeners socket: mensagens novas, typing e read receipts. */
   useEffect(() => {

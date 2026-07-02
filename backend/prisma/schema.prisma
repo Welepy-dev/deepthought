@@ -46,6 +46,7 @@ model User {
   projects            UserProject[]
   invitationsSent     ProjectInvitation[]  @relation("InvitationsSent")
   invitationsReceived ProjectInvitation[]  @relation("InvitationsReceived")
+  announcementReads   AnnouncementRead[]
 }
 
 model Project {
@@ -168,15 +169,28 @@ model Feedback {
 }
 
 model Announcement {
-  id        String   @id @default(cuid())
+  id        String             @id @default(cuid())
   title     String
   body      String
-  pinned    Boolean  @default(false)
+  pinned    Boolean            @default(false)
   authorId  String
-  createdAt DateTime @default(now())
-  author    User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  createdAt DateTime           @default(now())
+  author    User               @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  reads     AnnouncementRead[]
 
   @@index([createdAt])
+}
+
+model AnnouncementRead {
+  id             String       @id @default(cuid())
+  userId         String
+  announcementId String
+  readAt         DateTime     @default(now())
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  announcement   Announcement @relation(fields: [announcementId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, announcementId])
+  @@index([announcementId])
 }
 
 model Friendship {
@@ -200,6 +214,8 @@ model Notification {
   type      NotificationType
   title     String
   message   String?
+  /// Payload opcional para notificações accionáveis (ex.: friendshipId)
+  data      Json?
   isRead    Boolean          @default(false)
   createdAt DateTime         @default(now())
   user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)

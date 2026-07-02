@@ -91,7 +91,11 @@ export class FriendshipsService {
     });
 
     /** Notificação persistida; falha aqui não reverte o pedido (create já trata erros). */
-    await this.notifications.notifyFriendRequest(addresseeId, requester.login);
+    await this.notifications.notifyFriendRequest(
+      addresseeId,
+      requester.login,
+      friendship.id,
+    );
 
     this.logger.log(`Friend request ${requester.sub} -> ${addresseeId}`);
     return friendship;
@@ -293,6 +297,38 @@ export class FriendshipsService {
 
     this.logger.log(`User ${blockerId} unblocked ${targetId}`);
     return { message: 'User unblocked' };
+  }
+
+  /**
+   * Garante amizade ACCEPTED entre dois utilizadores (sem passar por pedido).
+   * Usado quando uma acção de ambos implica amizade — ex.: aceitar uma
+   * oferta de ajuda num projecto. Bloqueios continuam a impedir.
+   */
+  async ensureFriends(userA: string, userB: string): Promise<void> {
+    if (userA === userB) return;
+
+    const existing = await this.findRelation(userA, userB);
+
+    if (existing) {
+      if (existing.status === FriendshipStatus.BLOCKED) {
+        throw new ForbiddenException('Cannot befriend this user');
+      }
+      if (existing.status !== FriendshipStatus.ACCEPTED) {
+        await this.prisma.friendship.update({
+          where: { id: existing.id },
+          data: { status: FriendshipStatus.ACCEPTED },
+        });
+      }
+      return;
+    }
+
+    await this.prisma.friendship.create({
+      data: {
+        requesterId: userA,
+        addresseeId: userB,
+        status: FriendshipStatus.ACCEPTED,
+      },
+    });
   }
 
   /**

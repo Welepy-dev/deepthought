@@ -105,6 +105,16 @@ export class ProjectsQueryDto {
   @IsString()
   campus?: string;
 
+  /**
+   * Apenas os projectos do utilizador autenticado.
+   */
+  @IsOptional()
+  @Transform(({ value }) =>
+    value === 'true' ? true : value === 'false' ? false : value,
+  )
+  @IsBoolean()
+  mine?: boolean;
+
   /** Página (começa em 1) */
   @IsOptional()
   @Type(() => Number)

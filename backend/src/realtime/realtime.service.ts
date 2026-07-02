@@ -41,6 +41,14 @@ export class RealtimeService {
   }
 
   /**
+   * Emite um evento para todos os sockets ligados (broadcast global).
+   * Usado para anúncios da plataforma.
+   */
+  emitToAll(event: string, payload: unknown): void {
+    this.server?.emit(event, payload);
+  }
+
+  /**
    * True se o utilizador tem pelo menos uma sessão socket ligada.
    * Usado p.ex. para só criar notificação de nova mensagem quando o
    * destinatário está offline.

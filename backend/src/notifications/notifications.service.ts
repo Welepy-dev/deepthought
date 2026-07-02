@@ -1,7 +1,7 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { RealtimeService } from '../realtime/realtime.service';
-import { NotificationType } from '@prisma/client';
+import { NotificationType, Prisma } from '@prisma/client';
 
 /**
  * Serviço reutilizável de notificações.
@@ -39,6 +39,8 @@ export class NotificationsService {
     type: NotificationType,
     title: string,
     message?: string,
+    /** Payload accionável opcional (ex.: { friendshipId } em FRIEND_REQUEST). */
+    data?: Prisma.InputJsonValue,
   ) {
     try {
       const notification = await this.prisma.notification.create({
@@ -47,6 +49,7 @@ export class NotificationsService {
           type,
           title,
           message,
+          data,
           isRead: false,
         },
       });
@@ -173,14 +176,22 @@ export class NotificationsService {
 
   /**
    * Notifica um pedido de amizade recebido.
+   * O friendshipId no payload permite aceitar/recusar directamente na UI.
    * @param userId ID do utilizador destinatário
    * @param requesterLogin Login de quem enviou o pedido
+   * @param friendshipId ID da linha Friendship pendente
    */
-  async notifyFriendRequest(userId: string, requesterLogin: string) {
+  async notifyFriendRequest(
+    userId: string,
+    requesterLogin: string,
+    friendshipId: string,
+  ) {
     return this.create(
       userId,
       NotificationType.FRIEND_REQUEST,
       `${requesterLogin} enviou-te um pedido de amizade`,
+      undefined,
+      { friendshipId },
     );
   }
 

@@ -7,6 +7,10 @@ import {
   type Notification,
   type NotificationType,
 } from '../../../api/notifications'
+import {
+  acceptFriendRequest,
+  removeFriendship,
+} from '../../../api/friendships'
 
 const TYPE_ICONS: Record<NotificationType, string> = {
   FRIEND_REQUEST: '👥',
@@ -27,6 +31,8 @@ interface Props {
 export default function NotificationsPanel({ onUnreadChange }: Props) {
   const [notifications, setNotifications] = useState<Notification[]>([])
   const [loading, setLoading] = useState(true)
+  /** notificationId → resultado da acção de amizade (Accepted!/erro). */
+  const [actionResult, setActionResult] = useState<Record<string, string>>({})
 
   useEffect(() => {
     fetchNotifications()
@@ -59,6 +65,42 @@ export default function NotificationsPanel({ onUnreadChange }: Props) {
       )
       onUnreadChange((prev) => Math.max(0, prev - 1))
     } catch {}
+  }
+
+  /** Marca lida localmente + servidor (partilhado pelas acções de amizade). */
+  async function settle(notification: Notification, result: string) {
+    setActionResult((prev) => ({ ...prev, [notification.id]: result }))
+    if (!notification.isRead) {
+      try {
+        await markNotificationRead(notification.id)
+        setNotifications((prev) =>
+          prev.map((n) => (n.id === notification.id ? { ...n, isRead: true } : n)),
+        )
+        onUnreadChange((prev) => Math.max(0, prev - 1))
+      } catch {}
+    }
+  }
+
+  async function handleAcceptFriend(notification: Notification) {
+    const friendshipId = notification.data?.friendshipId
+    if (!friendshipId) return
+    try {
+      await acceptFriendRequest(friendshipId)
+      await settle(notification, 'Accepted!')
+    } catch (err: any) {
+      await settle(notification, err.message ?? 'No longer pending')
+    }
+  }
+
+  async function handleDeclineFriend(notification: Notification) {
+    const friendshipId = notification.data?.friendshipId
+    if (!friendshipId) return
+    try {
+      await removeFriendship(friendshipId)
+      await settle(notification, 'Declined')
+    } catch (err: any) {
+      await settle(notification, err.message ?? 'No longer pending')
+    }
   }
 
   async function handleMarkAll() {
@@ -106,30 +148,56 @@ export default function NotificationsPanel({ onUnreadChange }: Props) {
           </div>
         )}
 
-        {!loading && notifications.map((n) => (
-          <button
-            key={n.id}
-            onClick={() => handleClick(n)}
-            className={`w-full text-left px-4 py-3 border-b-2 border-black/40 flex gap-2 ${
-              n.isRead ? 'opacity-50' : 'bg-contrast/5'
-            }`}
-          >
-            <span className="text-sm shrink-0">{TYPE_ICONS[n.type] ?? 'ℹ️'}</span>
-            <div className="flex flex-col gap-1 min-w-0">
-              <p className="font-pressStart text-[10px] text-white leading-relaxed">
-                {n.title}
-              </p>
-              {n.message && (
-                <p className="font-pressStart text-[9px] text-white/60 leading-relaxed">
-                  {n.message}
+        {!loading && notifications.map((n) => {
+          const isFriendRequest =
+            n.type === 'FRIEND_REQUEST' && Boolean(n.data?.friendshipId)
+          const actionable = isFriendRequest && !n.isRead && !actionResult[n.id]
+          return (
+            <button
+              key={n.id}
+              onClick={() => !actionable && handleClick(n)}
+              className={`w-full text-left px-4 py-3 border-b-2 border-black/40 flex gap-2 ${
+                n.isRead ? 'opacity-50' : 'bg-contrast/5'
+              }`}
+            >
+              <span className="text-sm shrink-0">{TYPE_ICONS[n.type] ?? 'ℹ️'}</span>
+              <div className="flex flex-col gap-1 min-w-0 flex-1">
+                <p className="font-pressStart text-[10px] text-white leading-relaxed">
+                  {n.title}
                 </p>
-              )}
-              <p className="font-pressStart text-[8px] text-white/30">
-                {formatDate(n.createdAt)}
-              </p>
-            </div>
-          </button>
-        ))}
+                {n.message && (
+                  <p className="font-pressStart text-[9px] text-white/60 leading-relaxed">
+                    {n.message}
+                  </p>
+                )}
+                {actionable && (
+                  <div className="flex gap-2 mt-1">
+                    <span
+                      onClick={(e) => { e.stopPropagation(); handleAcceptFriend(n) }}
+                      className="font-pressStart text-[9px] text-green-400 border border-green-400 px-2 py-0.5 cursor-pointer"
+                    >
+                      Accept
+                    </span>
+                    <span
+                      onClick={(e) => { e.stopPropagation(); handleDeclineFriend(n) }}
+                      className="font-pressStart text-[9px] text-red-400 border border-red-400 px-2 py-0.5 cursor-pointer"
+                    >
+                      Decline
+                    </span>
+                  </div>
+                )}
+                {actionResult[n.id] && (
+                  <p className="font-pressStart text-[8px] text-secundary">
+                    {actionResult[n.id]}
+                  </p>
+                )}
+                <p className="font-pressStart text-[8px] text-white/30">
+                  {formatDate(n.createdAt)}
+                </p>
+              </div>
+            </button>
+          )
+        })}
       </div>
     </div>
   )

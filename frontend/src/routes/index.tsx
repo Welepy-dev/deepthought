@@ -8,6 +8,7 @@ import OTPEmail from "../signin/OTPemail";
 import PhaserGame from "../components/PhaserGame";
 import ProfileSetup from "../pages/ProfileSetup";
 import CharacterCreation from "../pages/CharacterCreation";
+import AdminPanel from "../pages/AdminPanel";
 
 import PrivacyPolicy from "../policy_pages/PrivacyPolicy";
 import ToS from "../policy_pages/ToS";
@@ -69,6 +70,15 @@ export function AppRouter() {
 				element={
 					<ProtectedRoute>
 						<App CustomComponent={PhaserGame} />
+					</ProtectedRoute>
+				}
+			/>
+
+			<Route
+				path="/Admin"
+				element={
+					<ProtectedRoute>
+						<App CustomComponent={AdminPanel} />
 					</ProtectedRoute>
 				}
 			/>

@@ -1,5 +1,6 @@
-import { useEffect, useRef, useState, type ReactElement } from 'react'
+import { useCallback, useEffect, useRef, useState, type ReactElement } from 'react'
 import { fetchMe } from '../../api/character'
+import { fetchAnnouncements } from '../../api/announcements'
 import { getSocket } from '../../api/socket'
 import SidebarNav, { type PanelId } from './SidebarNav'
 import ChatPanel          from './panels/ChatPanel'
@@ -7,9 +8,10 @@ import FeedbackPanel      from './panels/FeedbackPanel'
 import ProfilePanel       from './panels/ProfilePanel'
 import AnnouncementsPanel from './panels/AnnouncementsPanel'
 import ResourcesPanel     from './panels/ResourcesPanel'
-import FindPeersPanel     from './panels/FindPeersPanel'
+import SocialPanel        from './panels/SocialPanel'
 import LeaderboardsPanel  from './panels/LeaderboardsPanel'
 import NotificationsPanel from './panels/NotificationsPanel'
+import ProjectBoardPanel  from './panels/ProjectBoardPanel'
 
 interface User {
   id: string
@@ -23,25 +25,68 @@ interface User {
   evalPoints: number
   role: string
   bio: string | null
+  achievements?: {
+    id: string
+    unlockedAt: string
+    achievement: {
+      title: string
+      description: string
+      icon: string | null
+      xpReward: number
+    }
+  }[]
 }
+
+type CountSetter = (count: number | ((prev: number) => number)) => void
 
 interface PanelContentProps {
   panel: PanelId
   user: User | null
-  onUnreadChange: (count: number | ((prev: number) => number)) => void
+  onUnreadChange: CountSetter
+  onAnnouncementsUnreadChange: CountSetter
+  onOpenDm: (userId: string) => void
+  pendingDmUserId: string | null
+  onDmConsumed: () => void
 }
 
-function PanelContent({ panel, user, onUnreadChange }: PanelContentProps): ReactElement {
+function PanelContent({
+  panel,
+  user,
+  onUnreadChange,
+  onAnnouncementsUnreadChange,
+  onOpenDm,
+  pendingDmUserId,
+  onDmConsumed,
+}: PanelContentProps): ReactElement {
+  const uid = user?.id ?? null
   switch (panel) {
-    case 'chat':          return <ChatPanel currentUserId={user?.id ?? null} />
+    case 'chat':
+      return (
+        <ChatPanel
+          currentUserId={uid}
+          pendingDmUserId={pendingDmUserId}
+          onDmConsumed={onDmConsumed}
+        />
+      )
     case 'feedback':      return <FeedbackPanel />
     case 'profile':       return <ProfilePanel user={user} />
-    case 'announcements': return <AnnouncementsPanel user={user} />
+    case 'announcements':
+      return <AnnouncementsPanel user={user} onUnreadChange={onAnnouncementsUnreadChange} />
     case 'resources':     return <ResourcesPanel />
-    case 'findPeers':     return <FindPeersPanel />
+    case 'projects':
+      return <ProjectBoardPanel currentUserId={uid} onOpenDm={onOpenDm} />
+    case 'social':
+      return <SocialPanel currentUserId={uid} onOpenDm={onOpenDm} />
     case 'leaderboards':  return <LeaderboardsPanel />
     case 'notifications': return <NotificationsPanel onUnreadChange={onUnreadChange} />
-    default:              return <ChatPanel currentUserId={user?.id ?? null} />
+    default:
+      return (
+        <ChatPanel
+          currentUserId={uid}
+          pendingDmUserId={pendingDmUserId}
+          onDmConsumed={onDmConsumed}
+        />
+      )
   }
 }
 
@@ -50,6 +95,9 @@ export default function Sidebar() {
   const [exitingPanel, setExitingPanel] = useState<PanelId | null>(null)
   const [user, setUser] = useState<User | null>(null)
   const [unreadCount, setUnreadCount] = useState(0)
+  const [announcementsUnread, setAnnouncementsUnread] = useState(0)
+  /** Pedido de "abrir DM com X" vindo de outro painel; consumido pelo chat. */
+  const [dmUserId, setDmUserId] = useState<string | null>(null)
   const exitTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
@@ -60,15 +108,23 @@ export default function Sidebar() {
         setUnreadCount(me.unreadNotifications ?? 0)
       })
       .catch(() => {})
+
+    // Seed do badge de anúncios não lidos
+    fetchAnnouncements()
+      .then((list) => setAnnouncementsUnread(list.filter((a) => !a.isRead).length))
+      .catch(() => {})
   }, [])
 
   useEffect(() => {
-    // Incremento em tempo real; o painel corrige a contagem quando abre
+    // Incrementos em tempo real; os painéis corrigem a contagem quando abrem
     const socket = getSocket()
-    const onNew = () => setUnreadCount((c) => c + 1)
-    socket?.on('notification:new', onNew)
+    const onNotification = () => setUnreadCount((c) => c + 1)
+    const onAnnouncement = () => setAnnouncementsUnread((c) => c + 1)
+    socket?.on('notification:new', onNotification)
+    socket?.on('announcement:new', onAnnouncement)
     return () => {
-      socket?.off('notification:new', onNew)
+      socket?.off('notification:new', onNotification)
+      socket?.off('announcement:new', onAnnouncement)
     }
   }, [])
 
@@ -80,9 +136,38 @@ export default function Sidebar() {
     exitTimer.current = setTimeout(() => setExitingPanel(null), 160)
   }
 
+  /** Abrir DM a partir de qualquer painel: muda para o chat com alvo. */
+  const openDmWith = useCallback((userId: string) => {
+    setDmUserId(userId)
+    setActivePanel((current) => {
+      if (current === 'chat') return current
+      if (exitTimer.current) clearTimeout(exitTimer.current)
+      setExitingPanel(current)
+      exitTimer.current = setTimeout(() => setExitingPanel(null), 160)
+      return 'chat'
+    })
+  }, [])
+
+  const dmConsumed = useCallback(() => setDmUserId(null), [])
+
+  const panelProps = {
+    user,
+    onUnreadChange: setUnreadCount as CountSetter,
+    onAnnouncementsUnreadChange: setAnnouncementsUnread as CountSetter,
+    onOpenDm: openDmWith,
+    pendingDmUserId: dmUserId,
+    onDmConsumed: dmConsumed,
+  }
+
   return (
     <div className="absolute top-0 right-0 bottom-0 flex flex-row">
-      <SidebarNav activePanel={activePanel} onSelect={switchTo} unreadCount={unreadCount} />
+      <SidebarNav
+        activePanel={activePanel}
+        onSelect={switchTo}
+        unreadCount={unreadCount}
+        announcementsUnread={announcementsUnread}
+        isAdmin={user?.role === 'ADMIN'}
+      />
 
       <div className="relative w-72 h-full overflow-hidden bg-neutral_contrast border-l-4 border-black">
         {exitingPanel !== null && (
@@ -90,14 +175,14 @@ export default function Sidebar() {
             key={`exit-${exitingPanel}`}
             className="absolute inset-0 animate-slide-out-left z-10 pointer-events-none"
           >
-            <PanelContent panel={exitingPanel} user={user} onUnreadChange={setUnreadCount} />
+            <PanelContent panel={exitingPanel} {...panelProps} />
           </div>
         )}
         <div
           key={activePanel}
           className={`absolute inset-0 ${exitingPanel !== null ? 'animate-slide-in-from-left' : ''}`}
         >
-          <PanelContent panel={activePanel} user={user} onUnreadChange={setUnreadCount} />
+          <PanelContent panel={activePanel} {...panelProps} />
         </div>
       </div>
     </div>

@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react'
+import { getSocket } from '../../../api/socket'
 import {
   fetchAnnouncements,
   createAnnouncement,
   deleteAnnouncement,
+  markAnnouncementRead,
   type Announcement,
 } from '../../../api/announcements'
 
@@ -12,9 +14,11 @@ interface User {
 
 interface Props {
   user: User | null
+  /** Mantém o badge de anúncios não lidos sincronizado com este painel. */
+  onUnreadChange: (count: number | ((prev: number) => number)) => void
 }
 
-export default function AnnouncementsPanel({ user }: Props) {
+export default function AnnouncementsPanel({ user, onUnreadChange }: Props) {
   const [announcements, setAnnouncements] = useState<Announcement[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
@@ -28,10 +32,40 @@ export default function AnnouncementsPanel({ user }: Props) {
 
   useEffect(() => {
     fetchAnnouncements()
-      .then(setAnnouncements)
+      .then((list) => {
+        setAnnouncements(list)
+        // Fonte de verdade do servidor para o badge
+        onUnreadChange(list.filter((a) => !a.isRead).length)
+      })
       .catch(() => {})
       .finally(() => setLoading(false))
+
+    // Anúncio novo chega em tempo real com o painel aberto
+    const socket = getSocket()
+    const onNew = (announcement: Announcement) => {
+      setAnnouncements((prev) =>
+        prev.some((a) => a.id === announcement.id)
+          ? prev
+          : [{ ...announcement, isRead: false }, ...prev],
+      )
+    }
+    socket?.on('announcement:new', onNew)
+    return () => {
+      socket?.off('announcement:new', onNew)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  async function handleMarkRead(announcement: Announcement) {
+    if (announcement.isRead) return
+    try {
+      await markAnnouncementRead(announcement.id)
+      setAnnouncements((prev) =>
+        prev.map((a) => (a.id === announcement.id ? { ...a, isRead: true } : a)),
+      )
+      onUnreadChange((prev) => Math.max(0, prev - 1))
+    } catch {}
+  }
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault()
@@ -140,12 +174,17 @@ export default function AnnouncementsPanel({ user }: Props) {
         {!loading && announcements.map(a => (
           <div
             key={a.id}
-            className={`px-4 py-3 border-b-2 border-black/40 flex flex-col gap-1 ${a.pinned ? 'bg-contrast/5' : ''}`}
+            className={`px-4 py-3 border-b-2 border-black/40 flex flex-col gap-1 ${
+              a.pinned ? 'bg-contrast/5' : ''
+            } ${a.isRead ? 'opacity-60' : ''}`}
           >
             <div className="flex items-start justify-between gap-2">
               <div className="flex items-center gap-2 flex-1 min-w-0">
                 {a.pinned && (
                   <span className="font-pressStart text-[8px] text-secundary shrink-0">📌</span>
+                )}
+                {!a.isRead && (
+                  <span className="w-1.5 h-1.5 bg-red-500 shrink-0" title="Unread" />
                 )}
                 <p className="font-pressStart text-[10px] text-white leading-relaxed">{a.title}</p>
               </div>
@@ -159,9 +198,19 @@ export default function AnnouncementsPanel({ user }: Props) {
               )}
             </div>
             <p className="font-pressStart text-[9px] text-white/70 leading-relaxed">{a.body}</p>
-            <p className="font-pressStart text-[8px] text-white/30 mt-0.5">
-              {a.author.login} · {formatDate(a.createdAt)}
-            </p>
+            <div className="flex items-center justify-between mt-0.5">
+              <p className="font-pressStart text-[8px] text-white/30">
+                {a.author.login} · {formatDate(a.createdAt)}
+              </p>
+              {!a.isRead && (
+                <button
+                  onClick={() => handleMarkRead(a)}
+                  className="font-pressStart text-[8px] text-secundary hover:opacity-70"
+                >
+                  mark read
+                </button>
+              )}
+            </div>
           </div>
         ))}
       </div>

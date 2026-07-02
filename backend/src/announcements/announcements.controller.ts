@@ -6,6 +6,7 @@ import {
   HttpCode,
   HttpStatus,
   Param,
+  Patch,
   Post,
   UseGuards,
   ValidationPipe,
@@ -24,8 +25,14 @@ export class AnnouncementsController {
   constructor(private readonly announcementsService: AnnouncementsService) {}
 
   @Get()
-  findAll() {
-    return this.announcementsService.findAll();
+  findAll(@CurrentUser('sub') userId: string) {
+    return this.announcementsService.findAll(userId);
+  }
+
+  /** PATCH /announcements/:id/read — marca o anúncio como lido pelo user. */
+  @Patch(':id/read')
+  markRead(@Param('id') id: string, @CurrentUser('sub') userId: string) {
+    return this.announcementsService.markRead(userId, id);
   }
 
   @Post()

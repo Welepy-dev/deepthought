@@ -49,8 +49,9 @@ export class ProjectsController {
   @Get()
   findAll(
     @Query(new ValidationPipe({ transform: true })) query: ProjectsQueryDto,
+    @Req() req: any,
   ) {
-    return this.projectsService.findAll(query);
+    return this.projectsService.findAll(query, req.user.sub);
   }
 
   /**
@@ -74,6 +75,37 @@ export class ProjectsController {
     @Query('limit', new ParseIntPipe({ optional: true })) limit?: number,
   ) {
     return this.projectsService.findOpenHelpRequests(page, limit);
+  }
+
+  /**
+   * GET /projects/:id/offers
+   * Ofertas de ajuda recebidas num projecto próprio (:id = UserProject.id).
+   */
+  @Get(':id/offers')
+  listOffers(@Param('id') id: string, @Req() req: any) {
+    return this.projectsService.listOffers(id, req.user.sub);
+  }
+
+  /**
+   * POST /projects/offers/:offerId/accept
+   * Aceita uma oferta de ajuda: amizade automática + fecha o pedido.
+   */
+  @Post('offers/:offerId/accept')
+  @HttpCode(HttpStatus.OK)
+  acceptOffer(@Param('offerId') offerId: string, @Req() req: any) {
+    return this.projectsService.acceptOffer(offerId, {
+      sub: req.user.sub,
+      login: req.user.login,
+    });
+  }
+
+  /**
+   * GET /projects/:id/peers
+   * Quem está a fazer / terminou / é elegível para um Project do catálogo.
+   */
+  @Get(':id/peers')
+  findPeers(@Param('id') id: string, @Req() req: any) {
+    return this.projectsService.findPeers(id, req.user.sub);
   }
 
   /**

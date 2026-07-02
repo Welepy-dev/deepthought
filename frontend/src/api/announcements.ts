@@ -8,12 +8,21 @@ export interface Announcement {
   pinned: boolean
   createdAt: string
   author: { id: string; login: string; displayName: string }
+  isRead: boolean
 }
 
 export async function fetchAnnouncements(): Promise<Announcement[]> {
   const response = await apiFetch(`${API_BASE_URL}/announcements`)
   if (!response.ok) throw new Error('Failed to fetch announcements')
   return response.json()
+}
+
+export async function markAnnouncementRead(id: string): Promise<void> {
+  const response = await apiFetch(
+    `${API_BASE_URL}/announcements/${encodeURIComponent(id)}/read`,
+    { method: 'PATCH' },
+  )
+  if (!response.ok) throw new Error('Failed to mark announcement as read')
 }
 
 export async function createAnnouncement(payload: {

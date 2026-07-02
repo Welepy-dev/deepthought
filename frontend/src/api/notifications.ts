@@ -16,6 +16,8 @@ export interface Notification {
   type: NotificationType
   title: string
   message: string | null
+  /** Payload accionável (ex.: friendshipId em FRIEND_REQUEST). */
+  data: { friendshipId?: string } | null
   isRead: boolean
   createdAt: string
 }
