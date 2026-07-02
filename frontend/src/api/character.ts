@@ -35,6 +35,7 @@ export async function fetchMe(): Promise<{
   bio: string | null
   characterCreated: boolean
   characterLayers: CharacterLayers | null
+  unreadNotifications: number
 }> {
   const response = await apiFetch(`${API_BASE_URL}/users/me`)
   if (!response.ok) throw new Error('Failed to fetch user')

@@ -6,6 +6,7 @@ import {
   MessageBody,
   OnGatewayConnection,
   OnGatewayDisconnect,
+  OnGatewayInit,
   SubscribeMessage,
   WebSocketGateway,
   WebSocketServer,
@@ -15,6 +16,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { getJwtSecret } from '../auth/jwt-secret.util';
 import type { JwtPayload } from '../auth/strategies/jwt.strategy';
 import { buildCorsOrigins } from '../common/cors-origins.util';
+import { RealtimeService, userRoom } from '../realtime/realtime.service';
 import { PresenceService } from './presence.service';
 import { PlayerMoveDto } from './dto/player-move.dto';
 import type { PresenceEntry } from './interfaces/presence-entry.interface';
@@ -36,7 +38,9 @@ interface AuthedSocketData {
   cors: { origin: buildCorsOrigins(), credentials: true },
 })
 @UsePipes(new ValidationPipe({ whitelist: true, transform: true }))
-export class WorldGateway implements OnGatewayConnection, OnGatewayDisconnect {
+export class WorldGateway
+  implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect
+{
   @WebSocketServer()
   server: Server;
 
@@ -47,7 +51,13 @@ export class WorldGateway implements OnGatewayConnection, OnGatewayDisconnect {
     private readonly config: ConfigService,
     private readonly prisma: PrismaService,
     private readonly presence: PresenceService,
+    private readonly realtime: RealtimeService,
   ) {}
+
+  /** Regista o servidor socket.io no RealtimeService para emissões de outros módulos. */
+  afterInit(server: Server): void {
+    this.realtime.setServer(server);
+  }
 
   async handleConnection(client: Socket): Promise<void> {
     const token = client.handshake.auth?.token as string | undefined;
@@ -98,6 +108,8 @@ export class WorldGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
     this.presence.add(entry);
     await client.join(WORLD_ROOM);
+    /** Sala pessoal usada por notificações em tempo real (RealtimeService). */
+    await client.join(userRoom(user.id));
 
     client.emit('player:state', { players: this.presence.list(user.id) });
     client.to(WORLD_ROOM).emit('player:join', entry);

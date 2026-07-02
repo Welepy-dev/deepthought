@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { AuthModule } from '../auth/auth.module';
 import { PrismaModule } from '../prisma/prisma.module';
+import { RealtimeModule } from '../realtime/realtime.module';
 import { WorldGateway } from './world.gateway';
 import { PresenceService } from './presence.service';
 
@@ -10,7 +11,7 @@ import { PresenceService } from './presence.service';
  * no handshake do socket, em vez de duplicar a configuração do JWT.
  */
 @Module({
-  imports: [AuthModule, PrismaModule],
+  imports: [AuthModule, PrismaModule, RealtimeModule],
   providers: [WorldGateway, PresenceService],
 })
 export class GatewayModule {}

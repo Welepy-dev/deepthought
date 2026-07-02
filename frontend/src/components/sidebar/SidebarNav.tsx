@@ -7,6 +7,7 @@ import leaderboardsIcon  from '../../../assets/icons/leaderboards.png'
 import feedbackIcon      from '../../../assets/icons/feedback.png'
 
 export type PanelId =
+  | 'notifications'
   | 'announcements'
   | 'resources'
   | 'findPeers'
@@ -34,11 +35,32 @@ const NAV_ITEMS: NavItem[] = [
 interface Props {
   activePanel: PanelId
   onSelect: (id: PanelId) => void
+  /** Nº de notificações não lidas para o badge do sino. */
+  unreadCount: number
 }
 
-export default function SidebarNav({ activePanel, onSelect }: Props) {
+export default function SidebarNav({ activePanel, onSelect, unreadCount }: Props) {
+  const bellActive = activePanel === 'notifications'
   return (
     <div className="w-16 h-full bg-black/60 flex flex-col items-center justify-around py-4 shrink-0">
+      {/* Sino de notificações (sem asset próprio — glifo de texto) */}
+      <button
+        onClick={() => onSelect('notifications')}
+        title="Notifications"
+        className={`relative flex items-center justify-center w-9 h-9 transition-opacity ${
+          bellActive ? 'opacity-100' : 'opacity-50 hover:opacity-90'
+        }`}
+      >
+        {bellActive && (
+          <span className="absolute inset-0 bg-white/10 border border-white/20" />
+        )}
+        <span className="text-lg relative z-10">🔔</span>
+        {unreadCount > 0 && (
+          <span className="absolute -top-1 -right-1 z-20 min-w-4 h-4 px-0.5 bg-red-500 text-white font-pressStart text-[8px] flex items-center justify-center border border-black">
+            {unreadCount > 9 ? '9+' : unreadCount}
+          </span>
+        )}
+      </button>
       {NAV_ITEMS.map(item => {
         const isActive = item.id === activePanel
         return (

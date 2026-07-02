@@ -1,5 +1,6 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { RealtimeService } from '../realtime/realtime.service';
 import { NotificationType } from '@prisma/client';
 
 /**
@@ -21,6 +22,8 @@ export class NotificationsService {
   constructor(
     /** Acesso à base de dados para criar e listar notificações */
     private readonly prisma: PrismaService,
+    /** Emissão de eventos socket.io para sessões ligadas do destinatário */
+    private readonly realtime: RealtimeService,
   ) {}
 
   /**
@@ -49,6 +52,10 @@ export class NotificationsService {
       });
 
       this.logger.debug(`Notification created for user ${userId}: [${type}] ${title}`);
+
+      /** Push em tempo real; no-op se o utilizador não tiver sessões ligadas. */
+      this.realtime.emitToUser(userId, 'notification:new', notification);
+
       return notification;
       } catch (error) {
             const message =
@@ -125,42 +132,69 @@ export class NotificationsService {
   }
 
   /**
-   * Lista as notificações de um utilizador (paginadas).
+   * Lista as notificações de um utilizador com paginação real.
+   * GET /notifications
    * @param userId ID do utilizador
    * @param onlyUnread Se verdadeiro, retorna apenas não lidas
+   * @param page Página (começa em 1)
+   * @param limit Resultados por página
    */
-  async findAll(userId: string, onlyUnread = false) {
-    const where: any = { userId };
-    if (onlyUnread) {
-      where.isRead = false;
-    }
+  async findAll(userId: string, onlyUnread = false, page = 1, limit = 20) {
+    const where = onlyUnread ? { userId, isRead: false } : { userId };
+    const skip = (page - 1) * limit;
 
-    const [notifications, total] = await this.prisma.$transaction([
+    const [notifications, total, unreadCount] = await this.prisma.$transaction([
       this.prisma.notification.findMany({
         where,
         orderBy: { createdAt: 'desc' },
-        take: 50, // Limite de 50 notificações por pedido
+        skip,
+        take: limit,
       }),
       this.prisma.notification.count({ where }),
+      /** Contagem de não lidas independente do filtro, para o badge da UI. */
+      this.prisma.notification.count({ where: { userId, isRead: false } }),
     ]);
 
-    return { data: notifications, total };
+    return {
+      data: notifications,
+      meta: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+        unreadCount,
+      },
+    };
   }
 
   /**
-   * Marca uma ou todas as notificações como lidas.
-   * @param userId ID do utilizador (garante que só marca as suas)
-   * @param notificationId ID específico ou undefined para marcar todas
+   * Marca uma notificação como lida.
+   * PATCH /notifications/:id/read
+   * O filtro por userId garante que só marca notificações próprias.
    */
-  async markAsRead(userId: string, notificationId?: string) {
-    const where: any = { userId };
-    if (notificationId) {
-      where.id = notificationId;
-    }
-
-    await this.prisma.notification.updateMany({
-      where,
+  async markAsRead(userId: string, notificationId: string) {
+    const result = await this.prisma.notification.updateMany({
+      where: { id: notificationId, userId },
       data: { isRead: true },
     });
+
+    if (result.count === 0) {
+      throw new NotFoundException('Notification not found');
+    }
+
+    return { message: 'Notification marked as read' };
+  }
+
+  /**
+   * Marca todas as notificações do utilizador como lidas.
+   * PATCH /notifications/read-all
+   */
+  async markAllAsRead(userId: string) {
+    const result = await this.prisma.notification.updateMany({
+      where: { userId, isRead: false },
+      data: { isRead: true },
+    });
+
+    return { message: 'All notifications marked as read', count: result.count };
   }
 }

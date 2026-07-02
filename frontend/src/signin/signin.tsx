@@ -1,4 +1,4 @@
-import { Link, NavLink, useSearchParams } from "react-router-dom"
+import { Link, useSearchParams } from "react-router-dom"
 import CustomButton from "../components/CustomButton"
 import { API_BASE_URL } from "../config/api"
 
