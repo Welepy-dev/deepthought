@@ -31,9 +31,6 @@ export default function SignIn() {
 					)}
 
 					<CustomButton route={fortyTwoLoginUrl} name="Login with 42" />
-					<div className="flex flex-col pt-4">
-						<NavLink className="font-pressStart text-contrast underline hover:text-secundary transition text-xs" to={"/Game"}>Open game(beta)</NavLink>
-					</div>
 
 				</div>
 
