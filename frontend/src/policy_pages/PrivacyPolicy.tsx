@@ -57,8 +57,6 @@ export default function PrivacyPolicy() {
 
   return (
     <div className="flex flex-col items-center h-screen">
-
-      {/* BOTÃO VOLTAR */}
       <div className="w-2/3 mt-6">
         <Link
           to="/"
@@ -67,7 +65,6 @@ export default function PrivacyPolicy() {
           ← Back to Login
         </Link>
       </div>
-
       <ScrollableCard>
         <ReactMarkdown components={mdComponents}>
           {content}
