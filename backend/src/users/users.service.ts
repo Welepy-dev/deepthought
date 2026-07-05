@@ -5,6 +5,7 @@ import {
   ForbiddenException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { FriendshipsService } from '../friendships/friendships.service';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { UsersQueryDto } from './dto/users-query.dto';
 import { MappedFortyTwoProfile } from '../integrations/fortytwo/fortytwo.interfaces';
@@ -15,6 +16,8 @@ export class UsersService {
 
   constructor(
     private readonly prisma: PrismaService,
+    /** Lógica de bloqueios para privacidade do perfil público */
+    private readonly friendships: FriendshipsService,
   ) {}
 
   async findAll(query: UsersQueryDto) {
@@ -105,6 +108,10 @@ export class UsersService {
     if (dto.displayName !== undefined) updateData.displayName = dto.displayName;
     if (dto.avatar !== undefined) updateData.avatar = dto.avatar;
     if (dto.bio !== undefined) updateData.bio = dto.bio;
+    if (dto.characterLayers !== undefined) {
+      updateData.characterLayers = dto.characterLayers;
+      updateData.characterCreated = true;
+    }
 
     const user = await this.prisma.user.update({
       where: { id: userId },
@@ -120,6 +127,8 @@ export class UsersService {
         level: true,
         xp: true,
         role: true,
+        characterCreated: true,
+        characterLayers: true,
         updatedAt: true,
       },
     });
@@ -127,7 +136,20 @@ export class UsersService {
     return user;
   }
 
-  async findPublicProfile(id: string) {
+  // ─────────────────────────────────────────────────────────
+  // PERFIL PÚBLICO
+  // ─────────────────────────────────────────────────────────
+
+  /**
+   * Retorna o perfil público de um utilizador por ID.
+   * Não expõe dados sensíveis (email, refreshTokenHash, etc.).
+   * Se existir bloqueio entre o viewer e o alvo (em qualquer direcção),
+   * devolve apenas um perfil mínimo (privacidade de bloqueios).
+   * GET /users/:id
+   * @param id ID do utilizador a consultar
+   * @param viewerId ID do utilizador autenticado que está a consultar
+   */
+  async findPublicProfile(id: string, viewerId?: string) {
     const user = await this.prisma.user.findUnique({
       where: { id },
       include: {
@@ -151,6 +173,21 @@ export class UsersService {
 
     if (user.isBanned) {
       throw new NotFoundException(`User with id ${id} not found`);
+    }
+
+    // Perfil limitado quando há bloqueio entre os dois utilizadores
+    if (
+      viewerId &&
+      viewerId !== id &&
+      (await this.friendships.isBlockedBetween(viewerId, id))
+    ) {
+      return {
+        id: user.id,
+        login: user.login,
+        displayName: user.displayName,
+        avatar: user.avatar,
+        limited: true,
+      };
     }
 
     return {

@@ -101,6 +101,10 @@ export interface MappedFortyTwoProfile {
   level: number;
   evalPoints: number;
   projects: MappedProject[];
+  /** Tipo de conta 42 ("student", "staff", "admin", …). Usado para o acesso gate. */
+  kind: string;
+  /** Lista de cursus do utilizador com slug e data de fim. Usado para o acesso gate. */
+  cursusUsers: Array<{ slug: string; end_at: string | null }>;
 }
 
 export interface MappedProject {

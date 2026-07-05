@@ -78,6 +78,11 @@ export class FortyTwoService {
       level: mainCursus?.level ?? 0,
       evalPoints: profile.correction_point ?? 0,
       projects,
+      kind: profile.kind,
+      cursusUsers: profile.cursus_users.map((cu) => ({
+        slug: cu.cursus.slug,
+        end_at: cu.end_at,
+      })),
     };
   }
 
@@ -121,6 +126,9 @@ export class FortyTwoService {
       creating: 'IN_PROGRESS',
       searching_a_group: 'IN_PROGRESS',
       waiting_for_correction: 'IN_PROGRESS',
+      /** Espera por avaliação ainda não é falha. */
+      waiting_for_avaluation: 'IN_PROGRESS',
+      /** Apenas falha explícita da API vira FAILED. */
       failed: 'FAILED',
       fail: 'FAILED',
     };

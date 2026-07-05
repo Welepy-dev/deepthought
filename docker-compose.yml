@@ -57,6 +57,7 @@ services:
 
 volumes:
   postgres_data:
+  uploads:
 
 networks:
   transcendence_network:

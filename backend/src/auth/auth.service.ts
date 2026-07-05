@@ -1,8 +1,9 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { ForbiddenException, Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { UsersService } from '../users/users.service';
 import { SyncService } from '../sync/sync.service';
 import { FortyTwoService } from '../integrations/fortytwo/fortytwo.service';
+import { MappedFortyTwoProfile } from '../integrations/fortytwo/fortytwo.interfaces';
 import { OtpService, OtpTokens } from './otp/otp.service';
 
 export interface RequiresOtpResponse {
@@ -21,6 +22,7 @@ export interface AuthTokensResponse extends OtpTokens {
     coalition: string | null;
     level: number;
     role: string;
+    characterCreated: boolean;
   };
 }
 
@@ -43,6 +45,11 @@ export class AuthService {
 
     const profile = await this.fortyTwoService.getMe(accessToken);
 
+    if (!this.isEligible(profile)) {
+      throw new ForbiddenException('not_eligible');
+    }
+
+    // Verifica se o utilizador já existe (pelo ID único da 42)
     let user = await this.usersService.findBy42Id(profile.fortyTwoId);
 
     if (!user) {
@@ -87,7 +94,14 @@ export class AuthService {
         coalition: user.coalition,
         level: user.level,
         role: user.role,
+        characterCreated: user.characterCreated,
       },
     };
+  }
+
+  private isEligible(profile: MappedFortyTwoProfile): boolean {
+    const kind = profile.kind?.toLowerCase() ?? '';
+    if (kind === 'staff' || kind === 'admin') return true;
+    return profile.cursusUsers.some((cu) => cu.slug === '42cursus' && cu.end_at === null);
   }
 }
