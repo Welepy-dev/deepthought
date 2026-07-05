@@ -98,6 +98,8 @@ export default function Sidebar() {
   const [announcementsUnread, setAnnouncementsUnread] = useState(0)
   /** Pedido de "abrir DM com X" vindo de outro painel; consumido pelo chat. */
   const [dmUserId, setDmUserId] = useState<string | null>(null)
+  /** Below lg the panel is a toggleable drawer; at lg+ it's always visible. */
+  const [panelOpen, setPanelOpen] = useState(false)
   const exitTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
@@ -129,16 +131,21 @@ export default function Sidebar() {
   }, [])
 
   function switchTo(panel: PanelId) {
-    if (panel === activePanel) return
+    if (panel === activePanel) {
+      setPanelOpen((o) => !o)
+      return
+    }
     if (exitTimer.current) clearTimeout(exitTimer.current)
     setExitingPanel(activePanel)
     setActivePanel(panel)
+    setPanelOpen(true)
     exitTimer.current = setTimeout(() => setExitingPanel(null), 160)
   }
 
   /** Abrir DM a partir de qualquer painel: muda para o chat com alvo. */
   const openDmWith = useCallback((userId: string) => {
     setDmUserId(userId)
+    setPanelOpen(true)
     setActivePanel((current) => {
       if (current === 'chat') return current
       if (exitTimer.current) clearTimeout(exitTimer.current)
@@ -160,7 +167,7 @@ export default function Sidebar() {
   }
 
   return (
-    <div className="absolute top-0 right-0 bottom-0 flex flex-row">
+    <div className="absolute top-0 right-0 bottom-0 flex flex-row z-20">
       <SidebarNav
         activePanel={activePanel}
         onSelect={switchTo}
@@ -169,7 +176,14 @@ export default function Sidebar() {
         isAdmin={user?.role === 'ADMIN'}
       />
 
-      <div className="relative w-72 h-full overflow-hidden bg-neutral_contrast border-l-4 border-black">
+      <div className={`${panelOpen ? '' : 'hidden'} lg:block relative w-72 max-w-[calc(100vw-4rem)] h-full overflow-hidden bg-neutral_contrast border-l-4 border-black`}>
+        <button
+          onClick={() => setPanelOpen(false)}
+          className="absolute top-1 right-1 z-30 lg:hidden font-pressStart text-xs text-white/60 hover:text-white px-1"
+          aria-label="Close panel"
+        >
+          ×
+        </button>
         {exitingPanel !== null && (
           <div
             key={`exit-${exitingPanel}`}

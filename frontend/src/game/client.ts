@@ -163,8 +163,12 @@ export function startGame(
 	return new Phaser.Game({
 		type: Phaser.AUTO,
 		parent,
-		width: 1600,
-		height: 800,
+		scale: {
+			mode: Phaser.Scale.FIT,
+			autoCenter: Phaser.Scale.CENTER_BOTH,
+			width: 1600,
+			height: 800,
+		},
 		backgroundColor: "#111125",
 		scene: [GameScene],
 		physics: {

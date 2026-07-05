@@ -67,9 +67,11 @@ export default function PhaserGame() {
   if (!ready) return null;
 
   return (
-    <div className="relative inline-block bg-neutral_contrast border-b-8 border-r-8 border-l-4 border-t-4 border-black">
-      <div ref={containerRef} tabIndex={0} />
-      <Sidebar />
+    <div className="fixed inset-0 flex items-center justify-center p-1 sm:p-2 overflow-hidden">
+      <div className="relative w-[min(100%,calc((100vh-1rem)*2))] aspect-[2/1] max-h-full bg-neutral_contrast border-b-8 border-r-8 border-l-4 border-t-4 border-black">
+        <div ref={containerRef} tabIndex={0} className="w-full h-full" />
+        <Sidebar />
+      </div>
     </div>
   );
 }

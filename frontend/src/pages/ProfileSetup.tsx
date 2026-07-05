@@ -42,7 +42,7 @@ export default function ProfileSetup() {
   if (loading) return null
 
   return (
-    <div className="flex flex-col items-center gap-6 w-[480px] bg-neutral_contrast border-b-8 border-r-8 border-l-4 border-t-4 border-black p-8">
+    <div className="flex flex-col items-center gap-6 w-full max-w-[480px] bg-neutral_contrast border-b-8 border-r-8 border-l-4 border-t-4 border-black p-6 sm:p-8">
       <h1 className="font-pressStart text-sm text-contrast">Your Profile</h1>
 
       {avatar && (

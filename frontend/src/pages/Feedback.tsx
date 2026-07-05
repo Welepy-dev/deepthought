@@ -31,7 +31,7 @@ export default function Feedback() {
 
   if (sent) {
     return (
-      <div className="flex flex-col items-center gap-6 w-[480px] bg-neutral_contrast border-b-8 border-r-8 border-l-4 border-t-4 border-black p-8">
+      <div className="flex flex-col items-center gap-6 w-full max-w-[480px] bg-neutral_contrast border-b-8 border-r-8 border-l-4 border-t-4 border-black p-8">
         <h1 className="font-pressStart text-sm text-contrast">Feedback</h1>
         <p className="font-pressStart text-xs text-contrast text-center">
           Thanks for your feedback!
@@ -41,7 +41,7 @@ export default function Feedback() {
   }
 
   return (
-    <div className="flex flex-col items-center gap-6 w-[480px] bg-neutral_contrast border-b-8 border-r-8 border-l-4 border-t-4 border-black p-8">
+    <div className="flex flex-col items-center gap-6 w-full max-w-[480px] bg-neutral_contrast border-b-8 border-r-8 border-l-4 border-t-4 border-black p-8">
       <h1 className="font-pressStart text-sm text-contrast">Feedback</h1>
 
       <form onSubmit={handleSubmit} className="flex flex-col gap-4 w-full">

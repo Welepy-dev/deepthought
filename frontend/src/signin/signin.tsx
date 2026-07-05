@@ -8,11 +8,11 @@ export default function SignIn() {
 	const oauthError = searchParams.get('oauthError')
 
 	return (
-			<div className="px-8 w-[500px] space-y-16 pt-8 bg-neutral_contrast flex items-center justify-between flex-col text-center  border-b-8 border-r-8 border-l-4 border-t-4 border-black">
+			<div className="relative px-8 w-full max-w-[500px] space-y-16 pt-8 bg-neutral_contrast flex items-center justify-between flex-col text-center  border-b-8 border-r-8 border-l-4 border-t-4 border-black">
 
 				<div>
 
-					<Link className="text-4xl font-custom text-contrast" to="/">
+					<Link className="text-3xl sm:text-4xl font-custom text-contrast" to="/">
 						Deepthought
 					</Link>
 					<div className="text-white/70 text-sm pt-8 pb-4 text-center font-pressStart">

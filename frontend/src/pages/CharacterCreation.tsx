@@ -103,7 +103,7 @@ export default function CharacterCreation() {
     : ''
 
   return (
-    <div className="flex flex-col gap-6 bg-neutral_contrast border-b-8 border-r-8 border-l-4 border-t-4 border-black p-6">
+    <div className="flex flex-col gap-6 w-full max-w-2xl bg-neutral_contrast border-b-8 border-r-8 border-l-4 border-t-4 border-black p-4 sm:p-6">
 
       {/* 42 profile header */}
       {profileLoading ? (
@@ -121,8 +121,8 @@ export default function CharacterCreation() {
               {initials}
             </div>
           )}
-          <div className="flex flex-col gap-1">
-            <p className="font-pressStart text-xs text-contrast">
+          <div className="flex flex-col gap-1 min-w-0">
+            <p className="font-pressStart text-xs text-contrast break-words">
               {profile.login}
               <span className="opacity-50 ml-3">{profile.displayName}</span>
             </p>
@@ -136,10 +136,10 @@ export default function CharacterCreation() {
         </div>
       ) : null}
 
-      <div className="flex gap-6">
+      <div className="flex flex-col-reverse sm:flex-row gap-6">
 
       {/* Left: layer selector */}
-      <div className="flex flex-col gap-4 w-48">
+      <div className="flex flex-col gap-4 w-full sm:w-48">
         <h1 className="font-pressStart text-xs text-contrast">Character</h1>
 
         {/* Layer tabs */}

@@ -80,7 +80,7 @@ export default function AdminPanel() {
   if (!authorized) return null
 
   return (
-    <div className="w-[90vw] max-w-5xl max-h-[90vh] flex flex-col gap-4 bg-neutral_contrast border-b-8 border-r-8 border-l-4 border-t-4 border-black p-6">
+    <div className="w-[90vw] max-w-5xl max-h-[90vh] flex flex-col gap-4 bg-neutral_contrast border-b-8 border-r-8 border-l-4 border-t-4 border-black p-3 sm:p-6">
       <div className="flex items-center justify-between">
         <h1 className="font-pressStart text-sm text-contrast">Admin Panel</h1>
         <button
@@ -95,13 +95,13 @@ export default function AdminPanel() {
         value={search}
         onChange={(e) => { setSearch(e.target.value); setPage(1) }}
         placeholder="Search by login..."
-        className="px-3 py-2 bg-white font-pressStart text-xs focus:outline-none border-b-4 border-r-4 border-l-2 border-t-2 border-black w-64"
+        className="px-3 py-2 bg-white font-pressStart text-xs focus:outline-none border-b-4 border-r-4 border-l-2 border-t-2 border-black w-full sm:w-64"
       />
 
       {error && <p className="font-pressStart text-[10px] text-red-400">{error}</p>}
 
       <div className="flex-1 overflow-auto border-2 border-black">
-        <table className="w-full text-left">
+        <table className="w-full min-w-[640px] text-left">
           <thead className="bg-black/60 sticky top-0">
             <tr>
               {['User', 'Campus', 'Level', 'Verified', 'Role', 'Status', 'Actions'].map((h) => (
