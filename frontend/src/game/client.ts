@@ -5,6 +5,7 @@ import { setupInput } from "./setupInput";
 import { setupMap } from "./setupMap";
 import { cartToIso } from "./isometricUtils";
 import { toLocal, isValidTile } from "./mapCoords";
+import { hasHover } from "./deviceCapabilities";
 import {
 	Player,
 	type Direction,
@@ -51,6 +52,7 @@ class GameScene extends Phaser.Scene {
 	private highlight?: Phaser.GameObjects.Image;
 	private player?: Player;
 	private remoteSync?: RemotePlayerSync;
+	private hoverEnabled = hasHover();
 
 	preload() {
 		this.load.image("floor",       "assets/tilesets/floors.png");
@@ -89,7 +91,7 @@ class GameScene extends Phaser.Scene {
 		const { map, floorsLayer } = setupMap(this, this.offsetX, this.offsetY);
 		this.floorsLayer = floorsLayer;
 		setupCamera(this, map, this.offsetX, this.offsetY);
-		setupInput(this);
+		setupInput(this, { onTap: (worldX, worldY) => this.handleTileTap(worldX, worldY) });
 		setupUI(this, this.cameras.main);
 
 		this.highlight = this.add.image(0, 0, "highlight").setOrigin(0, 0);
@@ -107,27 +109,36 @@ class GameScene extends Phaser.Scene {
 			this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.remoteSync?.destroy());
 		}
 
-		// ── Click to move ─────────────────────────────────────────────────────
-		this.input.on("pointerdown", (pointer: Phaser.Input.Pointer) => {
-			const tile = this.floorsLayer?.getTileAtWorldXY(
-				pointer.worldX,
-				pointer.worldY,
-				true,
-				this.cameras.main,
-			);
+	}
 
-			if (tile) {
-				const { lx, ly } = toLocal(tile.x, tile.y);
-				if (isValidTile(lx, ly) && this.player) {
-					const direction = directionFromDelta(lx - this.player.lx, ly - this.player.ly);
-					this.player.setLocalTile(lx, ly, direction);
-					this.remoteSync?.emitMove(lx, ly, direction);
-				}
-			}
-		});
+	// ── Tap/click to move (fired by setupInput when the gesture wasn't a pan) ──
+	private handleTileTap(worldX: number, worldY: number): void {
+		const tile = this.floorsLayer?.getTileAtWorldXY(worldX, worldY, true, this.cameras.main);
+		if (!tile) return;
+
+		const { lx, ly } = toLocal(tile.x, tile.y);
+		if (!isValidTile(lx, ly) || !this.player) return;
+
+		const direction = directionFromDelta(lx - this.player.lx, ly - this.player.ly);
+		this.player.setLocalTile(lx, ly, direction);
+		this.remoteSync?.emitMove(lx, ly, direction);
+		if (!this.hoverEnabled) this.flashHighlight(tile);
+	}
+
+	// Touch has no hover, so flash the highlight briefly at the tapped tile.
+	private flashHighlight(tile: Phaser.Tilemaps.Tile): void {
+		const isoPos = cartToIso(tile.x, tile.y);
+		this.highlight?.setPosition(isoPos.x + this.offsetX, isoPos.y + this.offsetY);
+		this.highlight?.setTint(0xffffff);
+		this.highlight?.setDepth(0.5);
+		this.highlight?.setVisible(true);
+		this.time.delayedCall(350, () => this.highlight?.setVisible(false));
 	}
 
 	update(_time: number, _delta: number): void {
+		// No hover on touch devices; the highlight is flashed on tap instead.
+		if (!this.hoverEnabled) return;
+
 		const tile = this.floorsLayer?.getTileAtWorldXY(
 			this.input.activePointer.worldX,
 			this.input.activePointer.worldY,
@@ -160,7 +171,7 @@ export function startGame(
 	if (localUserId) _localUserId = localUserId;
 	_localDisplayName = localDisplayName;
 
-	return new Phaser.Game({
+	const game = new Phaser.Game({
 		type: Phaser.AUTO,
 		parent,
 		scale: {
@@ -170,10 +181,18 @@ export function startGame(
 			height: 800,
 		},
 		backgroundColor: "#111125",
+		input: { activePointers: 3 },
 		scene: [GameScene],
 		physics: {
 			default: "arcade",
 			arcade: { debug: false, gravity: { x: 0, y: 0 } },
 		},
 	});
+
+	// Dev-only handle for debugging/inspection from the browser console.
+	if (import.meta.env.DEV) {
+		(window as unknown as Record<string, unknown>).__game = game;
+	}
+
+	return game;
 }

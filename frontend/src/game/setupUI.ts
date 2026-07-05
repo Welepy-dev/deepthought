@@ -1,8 +1,6 @@
 import Phaser from "phaser";
 import { clampZoom } from "./setupCamera";
-
-// Total width of the React sidebar (64px nav + 288px panel)
-const REACT_SIDEBAR_WIDTH = 352;
+import { hasHover } from "./deviceCapabilities";
 
 export function setupUI(
 	scene: Phaser.Scene,
@@ -10,32 +8,39 @@ export function setupUI(
 ): void {
 	const padding = 12;
 	const spacing = 8;
-	const { width } = scene.cameras.main;
+	const hoverable = hasHover();
 
-	// Position zoom controls just to the left of the React sidebar
-	const zoomX = width - REACT_SIDEBAR_WIDTH - padding;
-
+	// Top-left: safe on every layout (the React sidebar docks right and
+	// collapses to a 64px rail on small screens).
 	const plusButton = scene.add
-		.image(zoomX, padding, "plusButton")
-		.setOrigin(1, 0)
+		.image(padding, padding, "plusButton")
+		.setOrigin(0, 0)
+		.setInteractive()
+		.setScrollFactor(0)
+		.setTint(0xaaaaaa);
+
+	const minusButton = scene.add
+		.image(padding, padding + plusButton.displayHeight + spacing, "minusButton")
+		.setOrigin(0, 0)
 		.setInteractive()
 		.setScrollFactor(0)
 		.setTint(0xaaaaaa);
 
 	plusButton.on("pointerdown", () => clampZoom(scene, +0.1));
-	plusButton.on("pointerover", () => plusButton.clearTint());
-	plusButton.on("pointerout", () => plusButton.setTint(0xaaaaaa));
-
-	const minusButton = scene.add
-		.image(zoomX, padding + plusButton.displayHeight + spacing, "minusButton")
-		.setOrigin(1, 0)
-		.setInteractive()
-		.setScrollFactor(0)
-		.setTint(0xaaaaaa);
-
 	minusButton.on("pointerdown", () => clampZoom(scene, -0.1));
-	minusButton.on("pointerover", () => minusButton.clearTint());
-	minusButton.on("pointerout", () => minusButton.setTint(0xaaaaaa));
+
+	if (hoverable) {
+		plusButton.on("pointerover", () => plusButton.clearTint());
+		plusButton.on("pointerout", () => plusButton.setTint(0xaaaaaa));
+		minusButton.on("pointerover", () => minusButton.clearTint());
+		minusButton.on("pointerout", () => minusButton.setTint(0xaaaaaa));
+	} else {
+		// Touch: pointerover/out never fire, so give press feedback instead.
+		plusButton.on("pointerdown", () => plusButton.clearTint());
+		plusButton.on("pointerup", () => plusButton.setTint(0xaaaaaa));
+		minusButton.on("pointerdown", () => minusButton.clearTint());
+		minusButton.on("pointerup", () => minusButton.setTint(0xaaaaaa));
+	}
 
 	mainCamera.ignore([plusButton, minusButton]);
 }

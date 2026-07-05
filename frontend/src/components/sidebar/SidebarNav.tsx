@@ -56,7 +56,7 @@ export default function SidebarNav({
   const navigate = useNavigate()
   const bellActive = activePanel === 'notifications'
   return (
-    <div className="w-16 h-full bg-black/60 flex flex-col items-center justify-around py-4 shrink-0">
+    <div className="w-16 h-full bg-black/60 flex flex-col items-center justify-start gap-2 lg:justify-around lg:gap-0 py-4 shrink-0 overflow-y-auto">
       {/* Sino de notificações (sem asset próprio — glifo de texto) */}
       <button
         onClick={() => onSelect('notifications')}

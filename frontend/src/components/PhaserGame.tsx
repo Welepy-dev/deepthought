@@ -54,6 +54,11 @@ export default function PhaserGame() {
       canvas?.focus();
     };
 
+    // touch-action doesn't inherit, so the wrapper's touch-none doesn't cover
+    // the canvas; without this the browser hijacks drags/pinches on touch.
+    const canvas = containerRef.current.querySelector('canvas') as HTMLCanvasElement | null;
+    if (canvas) canvas.style.touchAction = 'none';
+
     containerRef.current.tabIndex = 0;
     containerRef.current.addEventListener('pointerdown', focusCanvas);
 
@@ -67,9 +72,9 @@ export default function PhaserGame() {
   if (!ready) return null;
 
   return (
-    <div className="fixed inset-0 flex items-center justify-center p-1 sm:p-2 overflow-hidden">
-      <div className="relative w-[min(100%,calc((100vh-1rem)*2))] aspect-[2/1] max-h-full bg-neutral_contrast border-b-8 border-r-8 border-l-4 border-t-4 border-black">
-        <div ref={containerRef} tabIndex={0} className="w-full h-full" />
+    <div className="fixed inset-0 flex items-center justify-center p-1 sm:p-2 overflow-hidden overscroll-none">
+      <div className="relative w-[min(100%,calc((100dvh-1rem)*2))] aspect-[2/1] max-h-full bg-neutral_contrast border-b-8 border-r-8 border-l-4 border-t-4 border-black">
+        <div ref={containerRef} tabIndex={0} className="w-full h-full touch-none" />
         <Sidebar />
       </div>
     </div>
