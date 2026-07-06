@@ -143,6 +143,41 @@ export class OtpService {
   }
 
   /**
+   * Valida e consome um OTP sem exigir isEmailVerified=false.
+   *
+   * Usado no onboarding de password do login por email: o utilizador pode já
+   * estar verificado (conta 42), mas precisa provar posse do email antes de
+   * definir a password. Não emite tokens nem altera o utilizador além de
+   * limpar OTPs expirados; o caller decide o que persistir.
+   */
+  async consumeOtp(userId: string, code: string): Promise<User> {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+    });
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    if (!user.otpCode || !user.otpExpiresAt) {
+      throw new BadRequestException(
+        'OTP was not requested or was already used',
+      );
+    }
+
+    if (user.otpExpiresAt.getTime() <= Date.now()) {
+      await this.clearOtp(user.id);
+      throw new UnauthorizedException('OTP expired');
+    }
+
+    if (!this.secureCompare(user.otpCode, code)) {
+      throw new UnauthorizedException('Invalid OTP');
+    }
+
+    return user;
+  }
+
+  /**
    * Valida um refresh token existente e emite um novo par access/refresh.
    *
    * Este método suporta o frontend protegido sem recriar JWTService: reutiliza

@@ -11,7 +11,16 @@ import {
 
 import { AuthGuard } from '@nestjs/passport';
 
-import { AuthService } from './auth.service';
+import {
+  AuthService,
+  AuthTokensResponse,
+  EmailStartResponse,
+} from './auth.service';
+import {
+  EmailLoginDto,
+  EmailStartDto,
+  SetPasswordDto,
+} from './dto/email-auth.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { FortyTwoOAuthExceptionFilter } from './filters/forty-two-oauth-exception.filter';
 import { OtpService, OtpTokens } from './otp/otp.service';
@@ -86,6 +95,40 @@ export class AuthController {
 
     /** Utilizador completamente integrado: entra directamente no jogo. */
     return res.redirect(`${frontendUrl}/Game?${params.toString()}`);
+  }
+
+  /**
+   * POST /auth/email/start
+   * Primeiro passo do login por email: devolve 'setup' (OTP enviado, definir
+   * password) ou 'password' (conta já tem password); 404 se o email não existir.
+   */
+  @Post('email/start')
+  async emailStart(@Body() dto: EmailStartDto): Promise<EmailStartResponse> {
+    return this.authService.startEmailLogin(dto.email);
+  }
+
+  /**
+   * POST /auth/email/set-password
+   * Onboarding do primeiro login por email: OTP válido + nova password → JWTs.
+   */
+  @Post('email/set-password')
+  async emailSetPassword(
+    @Body() dto: SetPasswordDto,
+  ): Promise<AuthTokensResponse> {
+    return this.authService.setPasswordWithOtp(
+      dto.userId,
+      dto.code,
+      dto.password,
+    );
+  }
+
+  /**
+   * POST /auth/email/login
+   * Login por email para contas com password já definida.
+   */
+  @Post('email/login')
+  async emailLogin(@Body() dto: EmailLoginDto): Promise<AuthTokensResponse> {
+    return this.authService.loginWithEmail(dto.email, dto.password);
   }
 
   /**
