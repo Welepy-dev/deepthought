@@ -1,9 +1,4 @@
-import {
-  Injectable,
-  Logger,
-  NotFoundException,
-  ForbiddenException,
-} from '@nestjs/common';
+import { Injectable, Logger, NotFoundException,} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { UsersQueryDto } from './dto/users-query.dto';
@@ -190,7 +185,7 @@ export class UsersService {
         level: profile.level,
         evalPoints: profile.evalPoints,
         xp: Math.round(profile.level * 1000),
-        isEmailVerified: false, // Primeiro login deve validar OTP antes de receber JWT
+        isEmailVerified: false,
         lastSyncAt: new Date(),
         lastSeenAt: new Date(),
       },
