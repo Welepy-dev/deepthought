@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { PropsWithChildren } from 'react'
 import ReactMarkdown from 'react-markdown'
+import { Link } from 'react-router-dom'
 
 function ScrollableCard({ children }: PropsWithChildren) {
 	return (
@@ -56,7 +57,15 @@ export default function ToS() {
 	}, [])
 
 	return (
-		<div className='flex justify-center h-screen'>
+		<div className="flex flex-col items-center h-screen">
+			<div className="w-2/3 mt-6">
+				<Link
+					to="/"
+					className="inline-block px-4 py-2 bg-yellow-500 text-black font-semibold rounded hover:bg-yellow-400 transition"
+				>
+					← Back to Login
+				</Link>
+			</div>
 			<ScrollableCard>
 				<ReactMarkdown components={mdComponents}>{content}</ReactMarkdown>
 			</ScrollableCard>
