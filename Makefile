@@ -10,8 +10,18 @@ all: prisma-dev up
 build:
 	$(COMPOSE) build --no-cache
 
-# Sobe Postgres, backend e frontend em background.
-up:
+# Gera um certificado self-signed para o nginx (idempotente).
+certs:
+	@mkdir -p nginx/certs
+	@if [ ! -f nginx/certs/localhost.crt ]; then \
+		openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
+			-keyout nginx/certs/localhost.key \
+			-out nginx/certs/localhost.crt \
+			-subj "/CN=localhost"; \
+	fi
+
+# Sobe Postgres, backend, frontend e nginx (HTTPS) em background.
+up: certs
 	$(COMPOSE) up -d --build
 
 # Pára e remove containers mantendo volumes.
@@ -70,4 +80,4 @@ fclean: clean
 # Reinicia o ambiente completo.
 re: fclean all
 
-.PHONY: all up down build stop logs prisma studio restart clean fclean re
+.PHONY: all up down build stop logs prisma studio restart clean fclean re certs

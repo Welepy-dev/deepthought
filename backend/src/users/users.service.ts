@@ -10,6 +10,7 @@ import { FriendshipsService } from '../friendships/friendships.service';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { UsersQueryDto } from './dto/users-query.dto';
 import { MappedFortyTwoProfile } from '../integrations/fortytwo/fortytwo.interfaces';
+import { FileUploadService } from '../resources/file-upload.service';
 
 /**
  * Serviço de gestão de utilizadores.
@@ -29,6 +30,8 @@ export class UsersService {
     private readonly prisma: PrismaService,
     /** Lógica de bloqueios para privacidade do perfil público */
     private readonly friendships: FriendshipsService,
+    /** Apagar o ficheiro do avatar anterior quando substituído */
+    private readonly fileUploadService: FileUploadService,
   ) {}
 
   // ─────────────────────────────────────────────────────────
@@ -186,6 +189,36 @@ export class UsersService {
     });
 
     return user;
+  }
+
+  /**
+   * Define o avatar do utilizador a partir de um ficheiro já guardado.
+   * Apaga o avatar anterior apenas se também tiver sido um upload local
+   * (evita apagar ficheiros externos, ex.: avatar da 42).
+   * POST /users/me/avatar
+   * @param userId ID do utilizador autenticado
+   * @param avatarPath Caminho relativo devolvido pelo FileUploadService (/uploads/<file>)
+   */
+  async setAvatar(userId: string, avatarPath: string) {
+    const current = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { avatar: true },
+    });
+
+    if (current?.avatar?.startsWith('/uploads/')) {
+      this.fileUploadService.deleteFile(current.avatar.replace('/uploads/', ''));
+    }
+
+    return this.prisma.user.update({
+      where: { id: userId },
+      data: { avatar: avatarPath },
+      select: {
+        id: true,
+        login: true,
+        displayName: true,
+        avatar: true,
+      },
+    });
   }
 
   // ─────────────────────────────────────────────────────────

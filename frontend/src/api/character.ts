@@ -67,3 +67,17 @@ export async function saveProfile(data: {
     throw new Error(json.message ?? 'Failed to save profile')
   }
 }
+
+export async function uploadAvatar(file: File): Promise<{ avatar: string | null }> {
+  const formData = new FormData()
+  formData.append('file', file)
+  const response = await apiFetch(`${API_BASE_URL}/users/me/avatar`, {
+    method: 'POST',
+    body: formData,
+  })
+  if (!response.ok) {
+    const json = await response.json()
+    throw new Error(json.message ?? 'Failed to upload avatar')
+  }
+  return response.json()
+}

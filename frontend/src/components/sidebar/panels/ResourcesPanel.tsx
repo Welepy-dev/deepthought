@@ -8,7 +8,7 @@ import {
   type Resource,
   type ResourceType,
 } from '../../../api/resources'
-import { API_BASE_URL } from '../../../config/api'
+import { SERVER_ORIGIN } from '../../../config/api'
 
 const RESOURCE_TYPES: ResourceType[] = ['LINK', 'PDF', 'VIDEO', 'ARTICLE', 'GITHUB', 'OTHER', 'FILE']
 
@@ -277,7 +277,7 @@ export default function ResourcesPanel() {
             <div className="flex items-start justify-between gap-2">
               {r.type === 'FILE' ? (
                 <a
-                  href={`${API_BASE_URL}/uploads/${r.url}`}
+                  href={`${SERVER_ORIGIN}/uploads/${r.url}`}
                   download={r.originalName ?? undefined}
                   className="font-pressStart text-[10px] text-contrast hover:text-secundary leading-relaxed flex-1"
                 >

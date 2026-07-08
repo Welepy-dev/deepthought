@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { logout } from '../../../auth/logout'
-import { saveProfile } from '../../../api/character'
+import { saveProfile, uploadAvatar } from '../../../api/character'
+import Avatar from '../../Avatar'
 
 interface UserAchievement {
   id: string
@@ -52,6 +53,8 @@ export default function ProfilePanel({ user }: Props) {
   const [editBio, setEditBio] = useState('')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
+  const [uploadingAvatar, setUploadingAvatar] = useState(false)
+  const avatarInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     setProfile(user)
@@ -94,6 +97,22 @@ export default function ProfilePanel({ user }: Props) {
     }
   }
 
+  async function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file || !profile) return
+    setUploadingAvatar(true)
+    setError('')
+    try {
+      const { avatar } = await uploadAvatar(file)
+      setProfile({ ...profile, avatar })
+    } catch (e: any) {
+      setError(e.message ?? 'Failed to upload avatar')
+    } finally {
+      setUploadingAvatar(false)
+    }
+  }
+
   if (!profile) {
     return (
       <div className="flex items-center justify-center h-full">
@@ -117,19 +136,31 @@ export default function ProfilePanel({ user }: Props) {
       </div>
 
       <div className="flex flex-col items-center gap-3 p-4 border-b-4 border-black">
-        {profile.avatar ? (
-          <img
-            src={profile.avatar}
-            alt={profile.displayName}
-            className="w-16 h-16 border-b-4 border-r-4 border-l-2 border-t-2 border-black object-cover"
+        <div className="relative">
+          <Avatar
+            url={profile.avatar}
+            name={profile.displayName}
+            size={64}
+            className="!border-b-4 !border-r-4 !border-l-2 !border-t-2"
           />
-        ) : (
-          <div className="w-16 h-16 bg-black/40 border-b-4 border-r-4 border-l-2 border-t-2 border-black flex items-center justify-center">
-            <span className="font-pressStart text-contrast text-xl">
-              {profile.displayName.charAt(0).toUpperCase()}
-            </span>
-          </div>
-        )}
+          {editing && (
+            <button
+              type="button"
+              onClick={() => avatarInputRef.current?.click()}
+              disabled={uploadingAvatar}
+              className="absolute inset-0 flex items-center justify-center bg-black/60 font-pressStart text-[8px] text-white disabled:opacity-70"
+            >
+              {uploadingAvatar ? '...' : 'Edit'}
+            </button>
+          )}
+          <input
+            ref={avatarInputRef}
+            type="file"
+            accept="image/png,image/jpeg,image/gif,image/webp"
+            onChange={handleAvatarChange}
+            className="hidden"
+          />
+        </div>
         {editing ? (
           <div className="flex flex-col gap-2 w-full">
             <input

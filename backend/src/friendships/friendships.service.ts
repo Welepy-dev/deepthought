@@ -9,6 +9,7 @@ import {
 import { FriendshipStatus, Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { RealtimeService } from '../realtime/realtime.service';
 
 /** Campos públicos do outro utilizador devolvidos nas listagens de amizade. */
 const FRIEND_SELECT = {
@@ -39,6 +40,8 @@ export class FriendshipsService {
     private readonly prisma: PrismaService,
     /** Notificações de pedido enviado/aceite (helpers já existentes) */
     private readonly notifications: NotificationsService,
+    /** Estado de ligação socket.io para o indicador online/offline */
+    private readonly realtime: RealtimeService,
   ) {}
 
   /**
@@ -177,11 +180,14 @@ export class FriendshipsService {
     });
 
     /** Normaliza para "o outro lado" independentemente da direcção do pedido. */
-    return rows.map((f) => ({
-      friendshipId: f.id,
-      since: f.updatedAt,
-      friend: f.requesterId === userId ? f.addressee : f.requester,
-    }));
+    return rows.map((f) => {
+      const friend = f.requesterId === userId ? f.addressee : f.requester;
+      return {
+        friendshipId: f.id,
+        since: f.updatedAt,
+        friend: { ...friend, isOnline: this.realtime.isUserConnected(friend.id) },
+      };
+    });
   }
 
   /**

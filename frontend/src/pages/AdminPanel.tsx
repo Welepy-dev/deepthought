@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { fetchMe } from '../api/character'
+import Avatar from '../components/Avatar'
 import {
   fetchAdminUsers,
   banUser,
@@ -124,9 +125,12 @@ export default function AdminPanel() {
               return (
                 <tr key={u.id} className="border-t border-black/40">
                   <td className="px-3 py-2">
-                    <div className="flex flex-col">
-                      <span className="font-pressStart text-[10px] text-white">{u.displayName}</span>
-                      <span className="font-pressStart text-[8px] text-white/40">@{u.login} · {u.email}</span>
+                    <div className="flex items-center gap-2">
+                      <Avatar url={u.avatar} name={u.displayName} size={24} />
+                      <div className="flex flex-col min-w-0">
+                        <span className="font-pressStart text-[10px] text-white truncate">{u.displayName}</span>
+                        <span className="font-pressStart text-[8px] text-white/40 truncate">@{u.login} · {u.email}</span>
+                      </div>
                     </div>
                   </td>
                   <td className="px-3 py-2 font-pressStart text-[9px] text-white/70">

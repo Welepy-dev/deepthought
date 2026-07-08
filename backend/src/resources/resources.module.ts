@@ -8,5 +8,6 @@ import { PrismaModule } from '../prisma/prisma.module';
   imports: [PrismaModule],
   controllers: [ResourcesController],
   providers: [ResourcesService, FileUploadService],
+  exports: [FileUploadService],
 })
 export class ResourcesModule {}

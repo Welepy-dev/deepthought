@@ -2,17 +2,26 @@ import {
   Controller,
   Get,
   Patch,
+  Post,
   Param,
   Body,
   Query,
   Req,
   UseGuards,
+  UseInterceptors,
+  UploadedFile,
+  BadRequestException,
   ValidationPipe,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { UsersService } from './users.service';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { UsersQueryDto } from './dto/users-query.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { FileUploadService, FILE_UPLOAD_CONFIG } from '../resources/file-upload.service';
+
+/** Avatares só aceitam imagens — subconjunto do allowlist geral de uploads. */
+const AVATAR_MIME_TYPES = ['image/png', 'image/jpeg', 'image/gif', 'image/webp'];
 
 /**
  * Controlador do módulo de utilizadores.
@@ -22,6 +31,7 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
  * GET  /users        → Lista utilizadores com filtros e paginação
  * GET  /users/me     → Perfil completo do utilizador autenticado
  * PATCH /users/me    → Actualiza perfil próprio
+ * POST /users/me/avatar → Faz upload de um novo avatar
  * GET  /users/:id    → Perfil público de outro utilizador
  */
 @Controller('users')
@@ -30,6 +40,7 @@ export class UsersController {
   constructor(
     /** Serviço com a lógica de negócio de utilizadores */
     private readonly usersService: UsersService,
+    private readonly fileUploadService: FileUploadService,
   ) {}
 
   /**
@@ -76,6 +87,23 @@ export class UsersController {
     @Body(new ValidationPipe()) dto: UpdateProfileDto,
   ) {
     return this.usersService.updateMe(req.user.sub, dto);
+  }
+
+  /**
+   * POST /users/me/avatar
+   * Faz upload de um novo avatar (multipart/form-data, campo "file").
+   * Apaga o avatar anterior se este também tiver sido um upload.
+   */
+  @Post('me/avatar')
+  @UseInterceptors(FileInterceptor('file', FILE_UPLOAD_CONFIG))
+  uploadAvatar(@Req() req: any, @UploadedFile() file: Express.Multer.File) {
+    if (!file || !AVATAR_MIME_TYPES.includes(file.mimetype)) {
+      throw new BadRequestException(
+        'Avatar must be an image (PNG, JPEG, GIF or WEBP)',
+      );
+    }
+    const { fileName } = this.fileUploadService.saveFile(file);
+    return this.usersService.setAvatar(req.user.sub, `/uploads/${fileName}`);
   }
 
   /**

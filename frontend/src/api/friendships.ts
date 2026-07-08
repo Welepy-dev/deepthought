@@ -15,7 +15,7 @@ export interface FriendUser {
 export interface FriendEntry {
   friendshipId: string
   since: string
-  friend: FriendUser
+  friend: FriendUser & { isOnline: boolean }
 }
 
 export interface PendingEntry {
