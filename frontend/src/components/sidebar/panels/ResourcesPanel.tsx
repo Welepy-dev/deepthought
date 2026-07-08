@@ -3,7 +3,7 @@ import { fetchProjectCatalog, type ProjectCatalogItem } from '../../../api/proje
 import {
   fetchResources,
   createResource,
-  uploadResource,
+  uploadResourceWithProgress,
   deleteResource,
   type Resource,
   type ResourceType,
@@ -46,10 +46,23 @@ export default function ResourcesPanel() {
   const [showForm, setShowForm] = useState(false)
   const [form, setForm] = useState<CreateForm>(EMPTY_FORM)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  const [filePreview, setFilePreview] = useState<string | null>(null)
+  const [uploadProgress, setUploadProgress] = useState<number | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [formError, setFormError] = useState('')
   const [currentUserId, setCurrentUserId] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  /** object URL só existe enquanto o ficheiro está seleccionado; liberta memória ao trocar/limpar. */
+  useEffect(() => {
+    if (!selectedFile || !selectedFile.type.startsWith('image/')) {
+      setFilePreview(null)
+      return
+    }
+    const url = URL.createObjectURL(selectedFile)
+    setFilePreview(url)
+    return () => URL.revokeObjectURL(url)
+  }, [selectedFile])
 
   useEffect(() => {
     const token = localStorage.getItem('token')
@@ -93,13 +106,14 @@ export default function ResourcesPanel() {
       }
       setSubmitting(true)
       setFormError('')
+      setUploadProgress(0)
       try {
         const fd = new FormData()
         fd.append('file', selectedFile)
         fd.append('title', form.title.trim())
         fd.append('projectId', selectedId)
         if (form.description.trim()) fd.append('description', form.description.trim())
-        const created = await uploadResource(fd)
+        const created = await uploadResourceWithProgress(fd, setUploadProgress)
         setResources(prev => [created, ...prev])
         setForm(EMPTY_FORM)
         setSelectedFile(null)
@@ -108,6 +122,7 @@ export default function ResourcesPanel() {
         setFormError(err.message ?? 'Failed to upload file')
       } finally {
         setSubmitting(false)
+        setUploadProgress(null)
       }
       return
     }
@@ -216,9 +231,26 @@ export default function ResourcesPanel() {
                 className="text-[10px] font-pressStart text-white file:mr-2 file:px-2 file:py-1 file:border file:border-white/30 file:bg-black/40 file:text-white file:text-[10px] file:font-pressStart file:cursor-pointer"
               />
               {selectedFile && (
-                <p className="font-pressStart text-[8px] text-white/50">
-                  {selectedFile.name} ({formatFileSize(selectedFile.size)})
-                </p>
+                <div className="flex items-center gap-2">
+                  {filePreview && (
+                    <img
+                      src={filePreview}
+                      alt="Preview"
+                      className="w-8 h-8 object-cover border border-white/30 shrink-0"
+                    />
+                  )}
+                  <p className="font-pressStart text-[8px] text-white/50">
+                    {selectedFile.name} ({formatFileSize(selectedFile.size)})
+                  </p>
+                </div>
+              )}
+              {uploadProgress !== null && (
+                <div className="w-full h-2 bg-black/40 border border-black">
+                  <div
+                    className="h-full bg-contrast transition-all"
+                    style={{ width: `${uploadProgress}%` }}
+                  />
+                </div>
               )}
             </div>
           ) : (
