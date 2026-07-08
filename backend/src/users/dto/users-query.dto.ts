@@ -1,4 +1,4 @@
-import { IsOptional, IsString, IsInt, Min, Max } from 'class-validator';
+import { IsOptional, IsString, IsInt, IsIn, Min, Max } from 'class-validator';
 import { Type } from 'class-transformer';
 
 /**
@@ -52,4 +52,20 @@ export class UsersQueryDto {
   @Min(1)
   @Max(100)
   limit?: number = 20;
+
+  /**
+   * Campo de ordenação.
+   * @default "level"
+   */
+  @IsOptional()
+  @IsIn(['level', 'login', 'lastSeenAt'])
+  sortBy?: 'level' | 'login' | 'lastSeenAt';
+
+  /**
+   * Direcção de ordenação.
+   * @default "desc"
+   */
+  @IsOptional()
+  @IsIn(['asc', 'desc'])
+  order?: 'asc' | 'desc';
 }

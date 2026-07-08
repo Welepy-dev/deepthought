@@ -14,6 +14,14 @@ import {
   AdminUsersQueryDto,
 } from './dto/admin.dto';
 
+/** Whitelist explícita — nunca interpolar `sortBy` directamente num orderBy do Prisma. */
+const ADMIN_USER_SORT_FIELDS = {
+  level: 'level',
+  login: 'login',
+  lastSeenAt: 'lastSeenAt',
+  createdAt: 'createdAt',
+} as const;
+
 /**
  * Serviço de administração.
  * Permite gerir todos os utilizadores da plataforma.
@@ -33,7 +41,7 @@ export class AdminService {
    * GET /admin/users
    */
   async findAll(query: AdminUsersQueryDto) {
-    const { role, campus, banned, login, page = 1, limit = 20 } = query;
+    const { role, campus, banned, login, page = 1, limit = 20, sortBy, order } = query;
     const skip = (page - 1) * limit;
 
     // Filtro sem restrições (admin vê tudo, incluindo banidos)
@@ -49,7 +57,7 @@ export class AdminService {
         where,
         skip,
         take: limit,
-        orderBy: { createdAt: 'desc' },
+        orderBy: { [ADMIN_USER_SORT_FIELDS[sortBy ?? 'createdAt']]: order ?? 'desc' },
         select: {
           id: true,
           login: true,

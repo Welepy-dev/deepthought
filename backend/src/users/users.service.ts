@@ -12,6 +12,9 @@ import { UsersQueryDto } from './dto/users-query.dto';
 import { MappedFortyTwoProfile } from '../integrations/fortytwo/fortytwo.interfaces';
 import { FileUploadService } from '../resources/file-upload.service';
 
+/** Whitelist explícita — nunca interpolar `sortBy` directamente num orderBy do Prisma. */
+const USER_SORT_FIELDS = { level: 'level', login: 'login', lastSeenAt: 'lastSeenAt' } as const;
+
 /**
  * Serviço de gestão de utilizadores.
  * Responsável por:
@@ -44,7 +47,7 @@ export class UsersService {
    * @param query Parâmetros de filtro e paginação
    */
   async findAll(query: UsersQueryDto) {
-    const { login, campus, coalition, page = 1, limit = 20 } = query;
+    const { login, campus, coalition, page = 1, limit = 20, sortBy, order } = query;
 
     // Calcula o offset para paginação
     const skip = (page - 1) * limit;
@@ -77,7 +80,7 @@ export class UsersService {
         skip,
         take: limit,
         // Ordena por nível descendente por defeito
-        orderBy: { level: 'desc' },
+        orderBy: { [USER_SORT_FIELDS[sortBy ?? 'level']]: order ?? 'desc' },
         // Selecciona apenas campos públicos (sem dados sensíveis)
         select: this.publicUserSelect(),
       }),

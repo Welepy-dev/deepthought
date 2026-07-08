@@ -9,6 +9,13 @@ import { FileUploadService } from './file-upload.service';
 import { CreateResourceDto, UploadResourceDto, ResourcesQueryDto } from './dto/resources.dto';
 import { Role, ResourceType } from '@prisma/client';
 
+/** Whitelist explícita — nunca interpolar `sortBy` directamente num orderBy do Prisma. */
+const RESOURCE_SORT_FIELDS = {
+  createdAt: 'createdAt',
+  title: 'title',
+  fileSize: 'fileSize',
+} as const;
+
 /**
  * Serviço de gestão de recursos partilhados.
  * Permite criar, listar e apagar links/PDFs/vídeos associados a projectos.
@@ -28,7 +35,7 @@ export class ResourcesService {
    * @param query Filtros: projectId, type
    */
   async findAll(query: ResourcesQueryDto) {
-    const { projectId, type, page = 1, limit = 20 } = query;
+    const { projectId, type, page = 1, limit = 20, sortBy, order } = query;
     const skip = (page - 1) * limit;
 
     // Constrói filtro dinamicamente
@@ -47,7 +54,7 @@ export class ResourcesService {
         where,
         skip,
         take: limit,
-        orderBy: { createdAt: 'desc' },
+        orderBy: { [RESOURCE_SORT_FIELDS[sortBy ?? 'createdAt']]: order ?? 'desc' },
         include: {
           // Inclui dados do utilizador que partilhou
           user: {

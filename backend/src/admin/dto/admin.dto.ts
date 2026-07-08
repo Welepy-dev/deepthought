@@ -3,6 +3,7 @@ import {
   IsEmail,
   IsOptional,
   IsEnum,
+  IsIn,
   IsInt,
   IsBoolean,
   Min,
@@ -162,4 +163,20 @@ export class AdminUsersQueryDto {
   @Min(1)
   @Max(100)
   limit?: number = 20;
+
+  /**
+   * Campo de ordenação.
+   * @default "createdAt"
+   */
+  @IsOptional()
+  @IsIn(['level', 'login', 'lastSeenAt', 'createdAt'])
+  sortBy?: 'level' | 'login' | 'lastSeenAt' | 'createdAt';
+
+  /**
+   * Direcção de ordenação.
+   * @default "desc"
+   */
+  @IsOptional()
+  @IsIn(['asc', 'desc'])
+  order?: 'asc' | 'desc';
 }

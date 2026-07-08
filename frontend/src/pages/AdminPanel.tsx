@@ -9,7 +9,16 @@ import {
   updateUserRole,
   deleteUser,
   type AdminUser,
+  type AdminUserSortBy,
+  type SortOrder,
 } from '../api/admin'
+
+const SORT_OPTIONS: { label: string; sortBy: AdminUserSortBy; order: SortOrder }[] = [
+  { label: 'Newest', sortBy: 'createdAt', order: 'desc' },
+  { label: 'Level (high-low)', sortBy: 'level', order: 'desc' },
+  { label: 'Login (A-Z)', sortBy: 'login', order: 'asc' },
+  { label: 'Last seen', sortBy: 'lastSeenAt', order: 'desc' },
+]
 
 /**
  * Painel de administração — tabela sobre os endpoints /admin/users.
@@ -22,6 +31,7 @@ export default function AdminPanel() {
   const [users, setUsers] = useState<AdminUser[]>([])
   const [myId, setMyId] = useState('')
   const [search, setSearch] = useState('')
+  const [sortIndex, setSortIndex] = useState(0)
   const [page, setPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
   const [loading, setLoading] = useState(true)
@@ -43,14 +53,15 @@ export default function AdminPanel() {
   const load = useCallback(() => {
     setLoading(true)
     setError('')
-    fetchAdminUsers(page, search.trim())
+    const { sortBy, order } = SORT_OPTIONS[sortIndex]
+    fetchAdminUsers(page, search.trim(), sortBy, order)
       .then((res) => {
         setUsers(res.data)
         setTotalPages(res.meta.totalPages)
       })
       .catch((err: any) => setError(err.message ?? 'Failed to load users'))
       .finally(() => setLoading(false))
-  }, [page, search])
+  }, [page, search, sortIndex])
 
   useEffect(() => {
     if (!authorized) return
@@ -92,12 +103,23 @@ export default function AdminPanel() {
         </button>
       </div>
 
-      <input
-        value={search}
-        onChange={(e) => { setSearch(e.target.value); setPage(1) }}
-        placeholder="Search by login..."
-        className="px-3 py-2 bg-white font-pressStart text-xs focus:outline-none border-b-4 border-r-4 border-l-2 border-t-2 border-black w-full sm:w-64"
-      />
+      <div className="flex flex-col sm:flex-row gap-2">
+        <input
+          value={search}
+          onChange={(e) => { setSearch(e.target.value); setPage(1) }}
+          placeholder="Search by login..."
+          className="px-3 py-2 bg-white font-pressStart text-xs focus:outline-none border-b-4 border-r-4 border-l-2 border-t-2 border-black w-full sm:w-64"
+        />
+        <select
+          value={sortIndex}
+          onChange={(e) => { setSortIndex(Number(e.target.value)); setPage(1) }}
+          className="px-3 py-2 bg-black/40 text-white font-pressStart text-xs focus:outline-none border-b-4 border-r-4 border-l-2 border-t-2 border-black w-full sm:w-48"
+        >
+          {SORT_OPTIONS.map((opt, i) => (
+            <option key={opt.label} value={i}>{opt.label}</option>
+          ))}
+        </select>
+      </div>
 
       {error && <p className="font-pressStart text-[10px] text-red-400">{error}</p>}
 

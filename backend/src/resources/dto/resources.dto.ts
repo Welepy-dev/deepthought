@@ -2,6 +2,7 @@ import {
   IsString,
   IsOptional,
   IsEnum,
+  IsIn,
   IsUrl,
   MaxLength,
   MinLength,
@@ -91,4 +92,20 @@ export class ResourcesQueryDto {
   @Min(1)
   @Max(50)
   limit?: number = 20;
+
+  /**
+   * Campo de ordenação.
+   * @default "createdAt"
+   */
+  @IsOptional()
+  @IsIn(['createdAt', 'title', 'fileSize'])
+  sortBy?: 'createdAt' | 'title' | 'fileSize';
+
+  /**
+   * Direcção de ordenação.
+   * @default "desc"
+   */
+  @IsOptional()
+  @IsIn(['asc', 'desc'])
+  order?: 'asc' | 'desc';
 }

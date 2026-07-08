@@ -7,8 +7,16 @@ import {
   deleteResource,
   type Resource,
   type ResourceType,
+  type ResourceSortBy,
+  type SortOrder,
 } from '../../../api/resources'
 import { SERVER_ORIGIN } from '../../../config/api'
+
+const SORT_OPTIONS: { label: string; sortBy: ResourceSortBy; order: SortOrder }[] = [
+  { label: 'Newest', sortBy: 'createdAt', order: 'desc' },
+  { label: 'Title (A-Z)', sortBy: 'title', order: 'asc' },
+  { label: 'Size (large-small)', sortBy: 'fileSize', order: 'desc' },
+]
 
 const RESOURCE_TYPES: ResourceType[] = ['LINK', 'PDF', 'VIDEO', 'ARTICLE', 'GITHUB', 'OTHER', 'FILE']
 
@@ -51,6 +59,7 @@ export default function ResourcesPanel() {
   const [submitting, setSubmitting] = useState(false)
   const [formError, setFormError] = useState('')
   const [currentUserId, setCurrentUserId] = useState<string | null>(null)
+  const [sortIndex, setSortIndex] = useState(0)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   /** object URL só existe enquanto o ficheiro está seleccionado; liberta memória ao trocar/limpar. */
@@ -86,11 +95,12 @@ export default function ResourcesPanel() {
     if (!selectedId) return
     setLoadingResources(true)
     setResources([])
-    fetchResources(selectedId)
+    const { sortBy, order } = SORT_OPTIONS[sortIndex]
+    fetchResources(selectedId, sortBy, order)
       .then(setResources)
       .catch(() => {})
       .finally(() => setLoadingResources(false))
-  }, [selectedId])
+  }, [selectedId, sortIndex])
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault()
@@ -195,7 +205,7 @@ export default function ResourcesPanel() {
         </button>
       </div>
 
-      <div className="px-4 pt-3 pb-2 border-b-4 border-black shrink-0">
+      <div className="px-4 pt-3 pb-2 border-b-4 border-black shrink-0 flex flex-col gap-2">
         <select
           value={selectedId}
           onChange={e => { setSelectedId(e.target.value); setShowForm(false) }}
@@ -203,6 +213,15 @@ export default function ResourcesPanel() {
         >
           {projects.map(p => (
             <option key={p.id} value={p.id}>{p.name}</option>
+          ))}
+        </select>
+        <select
+          value={sortIndex}
+          onChange={e => setSortIndex(Number(e.target.value))}
+          className="w-full px-2 py-1.5 bg-black/40 text-white font-pressStart text-[10px] focus:outline-none border-b-2 border-r-2 border-l border-t border-black"
+        >
+          {SORT_OPTIONS.map((opt, i) => (
+            <option key={opt.label} value={i}>{opt.label}</option>
           ))}
         </select>
       </div>

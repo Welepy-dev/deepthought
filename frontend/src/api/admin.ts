@@ -31,12 +31,19 @@ async function throwIfNotOk(response: Response, fallback: string) {
   throw new Error((err as any).message ?? fallback)
 }
 
+export type AdminUserSortBy = 'level' | 'login' | 'lastSeenAt' | 'createdAt'
+export type SortOrder = 'asc' | 'desc'
+
 export async function fetchAdminUsers(
   page = 1,
   login = '',
+  sortBy?: AdminUserSortBy,
+  order?: SortOrder,
 ): Promise<AdminUsersPage> {
   const params = new URLSearchParams({ page: String(page), limit: '20' })
   if (login) params.set('login', login)
+  if (sortBy) params.set('sortBy', sortBy)
+  if (order) params.set('order', order)
   const response = await apiFetch(`${API_BASE_URL}/admin/users?${params}`)
   await throwIfNotOk(response, 'Failed to fetch users')
   return response.json()

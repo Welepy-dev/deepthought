@@ -25,8 +25,18 @@ export interface CreateResourcePayload {
   projectId: string
 }
 
-export async function fetchResources(projectId: string): Promise<Resource[]> {
-  const response = await apiFetch(`${API_BASE_URL}/resources?projectId=${encodeURIComponent(projectId)}&limit=50`)
+export type ResourceSortBy = 'createdAt' | 'title' | 'fileSize'
+export type SortOrder = 'asc' | 'desc'
+
+export async function fetchResources(
+  projectId: string,
+  sortBy?: ResourceSortBy,
+  order?: SortOrder,
+): Promise<Resource[]> {
+  const params = new URLSearchParams({ projectId, limit: '50' })
+  if (sortBy) params.set('sortBy', sortBy)
+  if (order) params.set('order', order)
+  const response = await apiFetch(`${API_BASE_URL}/resources?${params}`)
   if (!response.ok) throw new Error('Failed to fetch resources')
   const body = await response.json()
   return body.data ?? []
