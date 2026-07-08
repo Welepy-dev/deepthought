@@ -28,10 +28,10 @@ import {
 /**
  * Controller de administração.
  *
- * Todas as rotas deste controller exigem:
- * - JWT válido.
- * - Utilizador não banido.
- * - Role ADMIN actual na base de dados.
+ * Todas as rotas exigem JWT válido e utilizador não banido. O role
+ * exigido é ADMIN por defeito (nível de classe); list/ban/unban aceitam
+ * também MODERATOR via override de `@Roles()` no método. Alterar role e
+ * apagar utilizador ficam sempre restritos a ADMIN.
  */
 @Controller('admin')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -52,6 +52,7 @@ export class AdminController {
    * disponível com tipagem `JwtUser`, útil para auditoria/logs no futuro.
    */
   @Get('users')
+  @Roles(Role.MODERATOR, Role.ADMIN)
   findAll(
     @Query(new ValidationPipe({ transform: true, whitelist: true }))
     query: AdminUsersQueryDto,
@@ -103,6 +104,7 @@ export class AdminController {
    * O service impede que o admin se bana a si próprio.
    */
   @Patch('users/:id/ban')
+  @Roles(Role.MODERATOR, Role.ADMIN)
   ban(
     @Param('id') id: string,
     @CurrentUser('sub') adminId: string,
@@ -116,6 +118,7 @@ export class AdminController {
    * Remove o ban de um utilizador.
    */
   @Patch('users/:id/unban')
+  @Roles(Role.MODERATOR, Role.ADMIN)
   unban(@Param('id') id: string) {
     return this.adminService.unban(id);
   }

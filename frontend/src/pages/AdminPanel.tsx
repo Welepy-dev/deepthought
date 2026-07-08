@@ -22,12 +22,15 @@ const SORT_OPTIONS: { label: string; sortBy: AdminUserSortBy; order: SortOrder }
 
 /**
  * Painel de administração — tabela sobre os endpoints /admin/users.
- * O backend já exige role ADMIN (RolesGuard); este guard client-side
- * apenas evita mostrar uma página vazia a não-admins.
+ * MODERATOR e ADMIN podem aceder e listar/banir; alterar role e apagar
+ * utilizadores ficam reservados a ADMIN (o backend já as recusa via
+ * RolesGuard — os controlos ficam apenas ocultos aqui para não convidar
+ * a tentar uma acção que vai dar 403).
  */
 export default function AdminPanel() {
   const navigate = useNavigate()
   const [authorized, setAuthorized] = useState(false)
+  const [isAdmin, setIsAdmin] = useState(false)
   const [users, setUsers] = useState<AdminUser[]>([])
   const [myId, setMyId] = useState('')
   const [search, setSearch] = useState('')
@@ -40,11 +43,12 @@ export default function AdminPanel() {
   useEffect(() => {
     fetchMe()
       .then((me) => {
-        if (me.role !== 'ADMIN') {
+        if (me.role !== 'ADMIN' && me.role !== 'MODERATOR') {
           navigate('/Game', { replace: true })
           return
         }
         setMyId(me.id)
+        setIsAdmin(me.role === 'ADMIN')
         setAuthorized(true)
       })
       .catch(() => navigate('/', { replace: true }))
@@ -165,18 +169,22 @@ export default function AdminPanel() {
                     {u.isEmailVerified ? '✓' : '—'}
                   </td>
                   <td className="px-3 py-2">
-                    <select
-                      value={u.role}
-                      disabled={self}
-                      onChange={(e) =>
-                        run(() => updateUserRole(u.id, e.target.value as AdminUser['role']))
-                      }
-                      className="px-1 py-0.5 bg-black/40 text-white font-pressStart text-[8px] focus:outline-none border border-black disabled:opacity-40"
-                    >
-                      {(['USER', 'MODERATOR', 'ADMIN'] as const).map((r) => (
-                        <option key={r} value={r}>{r}</option>
-                      ))}
-                    </select>
+                    {isAdmin ? (
+                      <select
+                        value={u.role}
+                        disabled={self}
+                        onChange={(e) =>
+                          run(() => updateUserRole(u.id, e.target.value as AdminUser['role']))
+                        }
+                        className="px-1 py-0.5 bg-black/40 text-white font-pressStart text-[8px] focus:outline-none border border-black disabled:opacity-40"
+                      >
+                        {(['USER', 'MODERATOR', 'ADMIN'] as const).map((r) => (
+                          <option key={r} value={r}>{r}</option>
+                        ))}
+                      </select>
+                    ) : (
+                      <span className="font-pressStart text-[9px] text-white/70">{u.role}</span>
+                    )}
                   </td>
                   <td className="px-3 py-2 font-pressStart text-[9px]">
                     {u.isBanned
@@ -202,7 +210,7 @@ export default function AdminPanel() {
                           </button>
                         )
                       )}
-                      {!self && (
+                      {!self && isAdmin && (
                         <button
                           onClick={() => handleDelete(u)}
                           className="font-pressStart text-[8px] text-red-400 border border-red-400/50 px-1.5 py-0.5"
