@@ -149,3 +149,9 @@ dist
 .svelte-kit
 
 # End of https://www.toptal.com/developers/gitignore/api/node
+
+# Playwright e2e smoke suite
+frontend/e2e/.auth.json
+frontend/test-results/
+frontend/playwright-report/
+frontend/blob-report/

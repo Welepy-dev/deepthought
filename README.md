@@ -69,6 +69,8 @@ make down              # stop and remove containers (keeps volumes/data)
 make clean              # stop and remove containers *and* volumes (drops the DB)
 ```
 
+With the stack running, `cd frontend && npx playwright install && npm run test:e2e` runs the cross-browser smoke suite (see [`BROWSER_SUPPORT.md`](BROWSER_SUPPORT.md)).
+
 ## Resources
 
 Classic references used while building this project:
@@ -140,6 +142,10 @@ AI output was not merged blindly: each change was code-reviewed by a team member
 - **nginx** — TLS termination (self-signed local cert) and reverse proxy for the API, static uploads, WebSocket upgrades (`/socket.io/`), and the Vite dev server/HMR — this is what makes every browser↔backend connection HTTPS, including in local development
 - **Docker's embedded DNS resolver** — nginx re-resolves upstream hostnames per request (instead of caching an IP at config-load time) so it survives `docker compose restart backend` without a stale-upstream 502
 
+### Testing
+- **Jest** — backend unit tests (`backend/src/**/*.spec.ts`)
+- **Playwright** — cross-browser end-to-end smoke suite (`frontend/e2e/`), see [`BROWSER_SUPPORT.md`](BROWSER_SUPPORT.md)
+
 ### Justification for major technical choices
 - **NestJS over a minimal framework (Express/Fastify)**: the project has enough distinct domains (auth, users, friendships, projects, resources, chat, notifications, admin) that Nest's module system, dependency injection, and guard/decorator-based auth kept that surface organized instead of turning into a pile of ad hoc Express middleware.
 - **Prisma over a raw SQL/query builder**: a 17-model relational schema with many foreign keys benefits from Prisma's generated, type-safe client and its migration history, catching relation mistakes at compile time instead of at runtime.
@@ -209,7 +215,7 @@ All cross-user relations that should disappear with the account (friendships, me
 
 ## Modules
 
-Target: 14 points. Claimed here: **18 points**.
+Target: 14 points. Claimed here: **19 points**.
 
 | Module | Type | Points | Team member(s) |
 |---|---|---|---|
@@ -225,6 +231,7 @@ Target: 14 points. Claimed here: **18 points**.
 | File upload and management system | Minor | 1 | djoao (backend), marcsilv (UI: progress bar + preview) |
 | Module of choice — **Isometric Multiplayer Campus** | Major | 2 | djoao (sync backend), marcsilv (world/avatar layout), whole team (integration) |
 | Module of choice — **Achievements & Gamification System** | Minor | 1 | djoao |
+| Support for additional browsers | Minor | 1 | djoao (Playwright smoke suite, `BROWSER_SUPPORT.md`) |
 
 ### Module of choice (Major): Isometric Multiplayer Campus
 
@@ -254,11 +261,16 @@ Target: 14 points. Claimed here: **18 points**.
 
 Uploaded files (avatars and resource files) are served from `/uploads` **without authentication**, by design: `<img>` tags can't send a `Bearer` header, so avatars have to be publicly loadable, and resource download links need to keep working outside the SPA (e.g. pasted into an external chat). The access control that exists instead is the filename: every upload gets a random UUID v4 name (see `saveFile` in `backend/src/resources/file-upload.service.ts`), the directory isn't listable, and guessing an existing filename is infeasible. This is documented as an intentional trade-off, not an oversight — it's a "public but unguessable" model, appropriate for content that's meant to be shareable, and explicitly **not** a substitute for real access control on genuinely private files (there are none in this application).
 
+### Support for additional browsers
+
+Full compatibility with Firefox and Edge (Chromium-based, matching Chrome's engine), plus documented best-effort support for Safari — see [`BROWSER_SUPPORT.md`](BROWSER_SUPPORT.md) for the support matrix and known limitations (`dvh` viewport units needing Safari ≥15.4, Firefox's 32×32 custom-cursor size cap, and how the nginx HTTPS proxy fixed a cross-origin `download`-attribute caveat on resource files).
+
+**How it was verified.** `frontend/e2e/smoke.spec.ts` (Playwright) drives sign-in, the email-login flow, the OTP page, the game canvas mounting, sending a chat message, and uploading + cleaning up a resource file — the same suite runs unmodified against Chromium, Firefox, and WebKit. Chromium and Firefox pass all 12 tests in this environment; WebKit's system dependencies couldn't be installed here (no root access in this sandbox — see `BROWSER_SUPPORT.md` for the one-line fix on a machine with `sudo`), so Safari stays "best-effort" rather than fully verified.
+
 ### Not implemented / not claimed
 
 - **Any Gaming module** (web-based game, remote players, tournament, AI opponent, game statistics, second game): the world is a social/collaborative space, not a game with win/loss conditions, so none of the Gaming category's majors/minors are claimed — including "Game statistics", which explicitly requires a scored game.
 - **Advanced chat features** (block-from-chat, invite-to-game-from-chat, chat-based tournament notifications): partially satisfied by existing features (blocking, chat history, typing indicators, read receipts, profile-from-message) but not claimed, since it also expects game invites/notifications that don't apply here.
-- **Browser compatibility minor**: Chrome is the fully verified target; cross-browser (Firefox/Safari/Edge) verification is tracked as follow-up work, not yet claimed.
 - Accessibility (WCAG 2.1 AA), i18n/RTL, PWA/SSR, public API, analytics dashboard, GDPR tooling, AI/ML modules, blockchain, and the Cybersecurity WAF+Vault module: none attempted.
 
 ---
@@ -284,7 +296,7 @@ Uploaded files (avatars and resource files) are served from `/uploads` **without
 
 ## Known limitations
 
-- Cross-browser testing beyond Chrome is not yet complete (see "Not implemented" above).
+- Safari/WebKit is best-effort, not automatically verified — see [`BROWSER_SUPPORT.md`](BROWSER_SUPPORT.md).
 - The `/uploads` access model is public-but-unguessable by design (see the note above) — not suitable for genuinely private files, of which this application has none.
 - The isometric world currently supports one shared "campus" instance rather than per-cluster/per-room instancing.
 
