@@ -196,6 +196,45 @@ export class NotificationsService {
   }
 
   /**
+   * Notifica um único utilizador com uma mensagem de sistema
+   * (ex.: ban/unban, alteração de role, novo recurso num projecto).
+   * @param userId ID do destinatário
+   * @param title Título da notificação
+   * @param message Mensagem opcional com mais detalhe
+   */
+  async notifySystem(userId: string, title: string, message?: string) {
+    return this.create(userId, NotificationType.SYSTEM, title, message);
+  }
+
+  /**
+   * Cria notificações SYSTEM persistidas para vários utilizadores de uma vez
+   * (ex.: anúncio da plataforma) e só empurra em tempo real para quem está
+   * ligado — evita `emitToUser` a rooms vazias para o resto da base de utilizadores.
+   * @param userIds IDs dos destinatários
+   * @param title Título da notificação
+   * @param message Mensagem opcional com mais detalhe
+   */
+  async notifySystemBroadcast(userIds: string[], title: string, message?: string) {
+    if (userIds.length === 0) return;
+
+    const notifications = await this.prisma.notification.createManyAndReturn({
+      data: userIds.map((userId) => ({
+        userId,
+        type: NotificationType.SYSTEM,
+        title,
+        message,
+        isRead: false,
+      })),
+    });
+
+    for (const notification of notifications) {
+      if (this.realtime.isUserConnected(notification.userId)) {
+        this.realtime.emitToUser(notification.userId, 'notification:new', notification);
+      }
+    }
+  }
+
+  /**
    * Lista as notificações de um utilizador com paginação real.
    * GET /notifications
    * @param userId ID do utilizador

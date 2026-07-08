@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { FileUploadService } from './file-upload.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import { CreateResourceDto, UploadResourceDto, ResourcesQueryDto } from './dto/resources.dto';
 import { Role, ResourceType } from '@prisma/client';
 
@@ -27,7 +28,31 @@ export class ResourcesService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly fileUploadService: FileUploadService,
+    /** Notifica os membros do projecto quando um recurso novo é partilhado */
+    private readonly notifications: NotificationsService,
   ) {}
+
+  /**
+   * Notifica os utilizadores associados a um projecto (excepto quem partilhou)
+   * sobre um novo recurso.
+   */
+  private async notifyProjectMembers(
+    projectId: string,
+    sharerId: string,
+    projectName: string,
+    resourceTitle: string,
+  ) {
+    const members = await this.prisma.userProject.findMany({
+      where: { projectId, userId: { not: sharerId } },
+      select: { userId: true },
+    });
+
+    await this.notifications.notifySystemBroadcast(
+      members.map((m) => m.userId),
+      `📎 Novo recurso em ${projectName}`,
+      resourceTitle,
+    );
+  }
 
   /**
    * Lista recursos com filtros e paginação.
@@ -103,7 +128,7 @@ export class ResourcesService {
       throw new NotFoundException(`Project ${dto.projectId} not found`);
     }
 
-    return this.prisma.resource.create({
+    const resource = await this.prisma.resource.create({
       data: {
         title: dto.title,
         description: dto.description,
@@ -117,6 +142,10 @@ export class ResourcesService {
         project: { select: { id: true, name: true, slug: true } },
       },
     });
+
+    await this.notifyProjectMembers(dto.projectId, userId, project.name, dto.title);
+
+    return resource;
   }
 
   /**
@@ -136,7 +165,7 @@ export class ResourcesService {
 
     const { fileName, fileSize } = this.fileUploadService.saveFile(file);
 
-    return this.prisma.resource.create({
+    const resource = await this.prisma.resource.create({
       data: {
         title: dto.title,
         description: dto.description,
@@ -152,6 +181,10 @@ export class ResourcesService {
         project: { select: { id: true, name: true, slug: true } },
       },
     });
+
+    await this.notifyProjectMembers(dto.projectId, userId, project.name, dto.title);
+
+    return resource;
   }
 
   /**

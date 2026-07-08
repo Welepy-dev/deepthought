@@ -6,6 +6,7 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import {
   CreateUserDto,
   AdminUpdateUserDto,
@@ -34,6 +35,8 @@ export class AdminService {
   constructor(
     /** Acesso total à base de dados */
     private readonly prisma: PrismaService,
+    /** Notifica o utilizador afectado por acções administrativas */
+    private readonly notifications: NotificationsService,
   ) {}
 
   /**
@@ -192,13 +195,21 @@ export class AdminService {
 
     this.logger.warn(`Admin ${adminId} banning user ${id}`);
 
-    return this.prisma.user.update({
+    const banned = await this.prisma.user.update({
       where: { id },
       data: {
         isBanned: true,
         bannedAt: new Date(),
       },
     });
+
+    await this.notifications.notifySystem(
+      id,
+      '🚫 A tua conta foi suspensa',
+      dto.reason,
+    );
+
+    return banned;
   }
 
   /**
@@ -214,13 +225,17 @@ export class AdminService {
 
     this.logger.log(`Unbanning user ${id}`);
 
-    return this.prisma.user.update({
+    const unbanned = await this.prisma.user.update({
       where: { id },
       data: {
         isBanned: false,
         bannedAt: null,
       },
     });
+
+    await this.notifications.notifySystem(id, '✅ A tua conta foi reativada');
+
+    return unbanned;
   }
 
   /**
@@ -236,10 +251,17 @@ export class AdminService {
 
     this.logger.log(`Changing role of user ${id} to ${dto.role}`);
 
-    return this.prisma.user.update({
+    const updated = await this.prisma.user.update({
       where: { id },
       data: { role: dto.role },
     });
+
+    await this.notifications.notifySystem(
+      id,
+      `🔧 O teu cargo foi alterado para ${dto.role}`,
+    );
+
+    return updated;
   }
 
   // ─────────────────────────────────────────────────────────
