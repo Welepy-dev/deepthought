@@ -1,16 +1,9 @@
-import {
-  Injectable,
-  Logger,
-  NotFoundException,
-} from '@nestjs/common';
+import { Injectable, Logger, NotFoundException,} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { FortyTwoService } from '../integrations/fortytwo/fortytwo.service';
 import { AchievementsService } from '../achievements/achievements.service';
 import { NotificationsService } from '../notifications/notifications.service';
-import {
-  MappedFortyTwoProfile,
-  MappedProject,
-} from '../integrations/fortytwo/fortytwo.interfaces';
+import { MappedFortyTwoProfile, MappedProject,} from '../integrations/fortytwo/fortytwo.interfaces';
 import { Prisma, ProjectStatus } from '@prisma/client';
 
 @Injectable()
