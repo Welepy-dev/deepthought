@@ -5,7 +5,7 @@ export async function refreshToken() {
 
   if (!refreshToken) return false
 
-  /** Usa a mesma origem backend do OAuth/OTP para evitar refresh contra localhost errado. */
+  
   const response = await fetch(`${API_BASE_URL}/auth/refresh`, {
     method: 'POST',
     headers: {

@@ -1,7 +1,6 @@
 import { apiFetch } from './apiClient'
 import { API_BASE_URL } from '../config/api'
 
-/** Perfil público; `limited: true` quando há bloqueio entre os utilizadores. */
 export interface PublicProfile {
   id: string
   login: string

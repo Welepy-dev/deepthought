@@ -55,11 +55,7 @@ export async function createResource(payload: CreateResourcePayload): Promise<Re
   return response.json()
 }
 
-/**
- * fetch() não expõe progresso de upload; XHR é a única API do browser com
- * xhr.upload.onprogress. O Bearer é aplicado manualmente (apiFetch não serve
- * aqui) e um único 401 dispara um refresh + retry, espelhando o apiFetch.
- */
+
 function sendUpload(formData: FormData, token: string | null, onProgress?: (pct: number) => void) {
   return new Promise<{ status: number; body: any }>((resolve, reject) => {
     const xhr = new XMLHttpRequest()
