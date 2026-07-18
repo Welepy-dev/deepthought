@@ -10,6 +10,8 @@ import { NotificationsService } from '../notifications/notifications.service';
 import { CreateResourceDto, UploadResourceDto, ResourcesQueryDto } from './dto/resources.dto';
 import { Role, ResourceType } from '@prisma/client';
 
+const RESOURCE_SORT_FIELDS = { createdAt: 'createdAt', title: 'title', fileSize: 'fileSize' } as const;
+
 @Injectable()
 export class ResourcesService {
   private readonly logger = new Logger(ResourcesService.name);
@@ -40,7 +42,9 @@ export class ResourcesService {
         where,
         skip,
         take: limit,
-        orderBy: { [RESOURCE_SORT_FIELDS[sortBy ?? 'createdAt']]: order ?? 'desc' },
+        orderBy: {
+          [RESOURCE_SORT_FIELDS[sortBy ?? 'createdAt']]: order ?? 'desc',
+        },
         include: {
           user: {
             select: { id: true, login: true, displayName: true, avatar: true },
@@ -57,6 +61,33 @@ export class ResourcesService {
       data: resources,
       meta: { total, page, limit, totalPages: Math.ceil(total / limit) },
     };
+  }
+
+  private async notifyProjectMembers(
+    projectId: string,
+    actorId: string,
+    projectName: string,
+    resourceTitle: string,
+  ) {
+    const recipients = await this.prisma.userProject.findMany({
+      where: {
+        projectId,
+        userId: { not: actorId },
+        user: { isBanned: false },
+      },
+      select: { userId: true },
+    });
+
+    await Promise.allSettled(
+      recipients.map(({ userId }) =>
+        this.notifications.create(
+          userId,
+          'SYSTEM',
+          `Novo recurso em ${projectName}`,
+          resourceTitle,
+        ),
+      ),
+    );
   }
 
   async findByProject(projectId: string, page = 1, limit = 20) {

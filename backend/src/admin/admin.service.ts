@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { Role } from '@prisma/client';
 import {
   CreateUserDto,
   AdminUpdateUserDto,
@@ -15,11 +16,21 @@ import {
   AdminUsersQueryDto,
 } from './dto/admin.dto';
 
+const ADMIN_USER_SORT_FIELDS = {
+  level: 'level',
+  login: 'login',
+  lastSeenAt: 'lastSeenAt',
+  createdAt: 'createdAt',
+} as const;
+
 @Injectable()
 export class AdminService {
   private readonly logger = new Logger(AdminService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly notifications: NotificationsService,
+  ) {}
 
   async findAll(query: AdminUsersQueryDto) {
     const { role, campus, banned, login, page = 1, limit = 20, sortBy, order } = query;
@@ -37,7 +48,9 @@ export class AdminService {
         where,
         skip,
         take: limit,
-        orderBy: { [ADMIN_USER_SORT_FIELDS[sortBy ?? 'createdAt']]: order ?? 'desc' },
+        orderBy: {
+          [ADMIN_USER_SORT_FIELDS[sortBy ?? 'createdAt']]: order ?? 'desc',
+        },
         select: {
           id: true,
           login: true,

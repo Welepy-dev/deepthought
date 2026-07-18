@@ -52,7 +52,9 @@ export class UsersService {
         where,
         skip,
         take: limit,
-        orderBy: { level: 'desc' },
+        orderBy: {
+          [USER_SORT_FIELDS[sortBy ?? 'level']]: order ?? 'desc',
+        },
         select: this.publicUserSelect(),
       }),
       this.prisma.user.count({ where }),

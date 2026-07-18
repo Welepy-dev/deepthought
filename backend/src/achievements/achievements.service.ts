@@ -8,12 +8,7 @@ import {
 } from './achievements.constants';
 import { Achievement, ProjectStatus } from '@prisma/client';
 
-/**
- * O método checkAchievements() é chamado após:
- * - Sync com API 42
- * - Conclusão de projecto
- * - Oferta de ajuda
- */
+
 @Injectable()
 export class AchievementsService {
   private readonly logger = new Logger(AchievementsService.name);

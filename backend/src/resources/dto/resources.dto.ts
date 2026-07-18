@@ -13,6 +13,9 @@ import {
 import { ResourceType } from '@prisma/client';
 import { Type } from 'class-transformer';
 
+export type ResourceSortBy = 'createdAt' | 'title' | 'fileSize';
+export type SortOrder = 'asc' | 'desc';
+
 export class CreateResourceDto {
   @IsString()
   @MinLength(3)
@@ -59,6 +62,14 @@ export class ResourcesQueryDto {
   @IsOptional()
   @IsEnum(ResourceType)
   type?: ResourceType;
+
+  @IsOptional()
+  @IsIn(['createdAt', 'title', 'fileSize'])
+  sortBy?: ResourceSortBy = 'createdAt';
+
+  @IsOptional()
+  @IsIn(['asc', 'desc'])
+  order?: SortOrder = 'desc';
 
   @IsOptional()
   @Type(() => Number)
