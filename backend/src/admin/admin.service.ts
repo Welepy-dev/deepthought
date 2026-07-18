@@ -15,39 +15,16 @@ import {
   AdminUsersQueryDto,
 } from './dto/admin.dto';
 
-/** Whitelist explícita — nunca interpolar `sortBy` directamente num orderBy do Prisma. */
-const ADMIN_USER_SORT_FIELDS = {
-  level: 'level',
-  login: 'login',
-  lastSeenAt: 'lastSeenAt',
-  createdAt: 'createdAt',
-} as const;
-
-/**
- * Serviço de administração.
- * Permite gerir todos os utilizadores da plataforma.
- * Todos os métodos requerem role ADMIN.
- */
 @Injectable()
 export class AdminService {
   private readonly logger = new Logger(AdminService.name);
 
-  constructor(
-    /** Acesso total à base de dados */
-    private readonly prisma: PrismaService,
-    /** Notifica o utilizador afectado por acções administrativas */
-    private readonly notifications: NotificationsService,
-  ) {}
+  constructor(private readonly prisma: PrismaService) {}
 
-  /**
-   * Lista todos os utilizadores com filtros avançados (incluindo banidos).
-   * GET /admin/users
-   */
   async findAll(query: AdminUsersQueryDto) {
     const { role, campus, banned, login, page = 1, limit = 20, sortBy, order } = query;
     const skip = (page - 1) * limit;
 
-    // Filtro sem restrições (admin vê tudo, incluindo banidos)
     const where: any = {};
 
     if (role) where.role = role;
@@ -78,7 +55,6 @@ export class AdminService {
           lastSeenAt: true,
           lastSyncAt: true,
           createdAt: true,
-          // Conta conquistas e projectos para estatísticas rápidas
           _count: {
             select: {
               achievements: true,
@@ -96,15 +72,9 @@ export class AdminService {
     };
   }
 
-  /**
-   * Cria um utilizador manualmente (sem OAuth2).
-   * POST /admin/users
-   * @param dto Dados do novo utilizador
-   */
   async create(dto: CreateUserDto) {
     this.logger.log(`Admin creating user: ${dto.login}`);
 
-    // Verifica se o login já existe
     const existing = await this.prisma.user.findFirst({
       where: { OR: [{ login: dto.login }, { email: dto.email }] },
     });
@@ -128,16 +98,9 @@ export class AdminService {
     });
   }
 
-  /**
-   * Edita qualquer campo de um utilizador.
-   * PATCH /admin/users/:id
-   * @param id ID do utilizador a editar
-   * @param dto Dados a actualizar
-   */
   async update(id: string, dto: AdminUpdateUserDto) {
     this.logger.log(`Admin updating user ${id}`);
 
-    // Verifica se o utilizador existe
     await this.findOneOrThrow(id);
 
     return this.prisma.user.update({
@@ -153,14 +116,7 @@ export class AdminService {
     });
   }
 
-  /**
-   * Apaga um utilizador permanentemente.
-   * DELETE /admin/users/:id
-   * @param id ID do utilizador a apagar
-   * @param adminId ID do admin (não pode apagar a si próprio)
-   */
   async remove(id: string, adminId: string) {
-    // Previne que um admin se apague a si próprio
     if (id === adminId) {
       throw new BadRequestException('You cannot delete your own account');
     }
@@ -174,14 +130,6 @@ export class AdminService {
     return { message: `User ${id} deleted successfully` };
   }
 
-  /**
-   * Bane um utilizador.
-   * Regista o motivo e a data do ban.
-   * PATCH /admin/users/:id/ban
-   * @param id ID do utilizador a banir
-   * @param adminId ID do admin (não pode banir a si próprio)
-   * @param dto Motivo do ban (opcional)
-   */
   async ban(id: string, adminId: string, dto: BanUserDto) {
     if (id === adminId) {
       throw new BadRequestException('You cannot ban yourself');
@@ -212,10 +160,6 @@ export class AdminService {
     return banned;
   }
 
-  /**
-   * Remove o ban de um utilizador.
-   * PATCH /admin/users/:id/unban
-   */
   async unban(id: string) {
     const user = await this.findOneOrThrow(id);
 
@@ -238,10 +182,6 @@ export class AdminService {
     return unbanned;
   }
 
-  /**
-   * Altera o role de um utilizador.
-   * PATCH /admin/users/:id/role
-   */
   async updateRole(id: string, adminId: string, dto: UpdateRoleDto) {
     if (id === adminId) {
       throw new BadRequestException('You cannot change your own role');
@@ -264,14 +204,6 @@ export class AdminService {
     return updated;
   }
 
-  // ─────────────────────────────────────────────────────────
-  // UTILITÁRIOS PRIVADOS
-  // ─────────────────────────────────────────────────────────
-
-  /**
-   * Busca um utilizador ou lança NotFoundException.
-   * @param id ID do utilizador
-   */
   private async findOneOrThrow(id: string) {
     const user = await this.prisma.user.findUnique({
       where: { id },

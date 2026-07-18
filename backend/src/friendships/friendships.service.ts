@@ -11,7 +11,6 @@ import { PrismaService } from '../prisma/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { RealtimeService } from '../realtime/realtime.service';
 
-/** Campos públicos do outro utilizador devolvidos nas listagens de amizade. */
 const FRIEND_SELECT = {
   id: true,
   login: true,
@@ -24,8 +23,6 @@ const FRIEND_SELECT = {
 } satisfies Prisma.UserSelect;
 
 /**
- * Serviço do sistema de amizades e bloqueios.
- *
  * Modelo: uma linha `Friendship` por par de utilizadores para PENDING/ACCEPTED
  * (direcção = quem pediu). Bloqueios usam o mesmo model com status BLOCKED,
  * onde `requesterId` é sempre quem bloqueou — dois bloqueios mútuos podem
@@ -36,20 +33,12 @@ export class FriendshipsService {
   private readonly logger = new Logger(FriendshipsService.name);
 
   constructor(
-    /** Acesso à base de dados */
     private readonly prisma: PrismaService,
-    /** Notificações de pedido enviado/aceite (helpers já existentes) */
     private readonly notifications: NotificationsService,
     /** Estado de ligação socket.io para o indicador online/offline */
     private readonly realtime: RealtimeService,
   ) {}
 
-  /**
-   * Envia um pedido de amizade.
-   * POST /friendships/:userId
-   * @param requester Utilizador autenticado (id + login para a notificação)
-   * @param addresseeId Destinatário do pedido
-   */
   async sendRequest(
     requester: { sub: string; login: string },
     addresseeId: string,
@@ -58,7 +47,6 @@ export class FriendshipsService {
       throw new BadRequestException('Cannot send a friend request to yourself');
     }
 
-    /** Destinatário tem de existir e não estar banido. */
     const addressee = await this.prisma.user.findUnique({
       where: { id: addresseeId },
       select: { id: true, isBanned: true },
@@ -68,18 +56,15 @@ export class FriendshipsService {
       throw new NotFoundException('User not found');
     }
 
-    /** Verifica relação existente em qualquer direcção antes de criar. */
     const existing = await this.findRelation(requester.sub, addresseeId);
 
     if (existing) {
       if (existing.status === FriendshipStatus.BLOCKED) {
-        /** Bloqueio em qualquer direcção impede novos pedidos. */
         throw new ForbiddenException('Cannot send a friend request to this user');
       }
       if (existing.status === FriendshipStatus.ACCEPTED) {
         throw new ConflictException('You are already friends');
       }
-      /** PENDING: distingue pedido duplicado de pedido cruzado. */
       if (existing.requesterId === requester.sub) {
         throw new ConflictException('Friend request already sent');
       }
@@ -93,7 +78,6 @@ export class FriendshipsService {
       include: { addressee: { select: FRIEND_SELECT } },
     });
 
-    /** Notificação persistida; falha aqui não reverte o pedido (create já trata erros). */
     await this.notifications.notifyFriendRequest(
       addresseeId,
       requester.login,
@@ -104,11 +88,6 @@ export class FriendshipsService {
     return friendship;
   }
 
-  /**
-   * Aceita um pedido de amizade recebido.
-   * PATCH /friendships/:id/accept
-   * Apenas o destinatário do pedido pode aceitar.
-   */
   async accept(id: string, acceptor: { sub: string; login: string }) {
     const friendship = await this.prisma.friendship.findUnique({
       where: { id },
@@ -138,11 +117,6 @@ export class FriendshipsService {
     return updated;
   }
 
-  /**
-   * Recusa um pedido pendente ou remove uma amizade existente.
-   * DELETE /friendships/:id
-   * Qualquer um dos dois lados pode remover; bloqueios não passam por aqui.
-   */
   async remove(id: string, userId: string) {
     const friendship = await this.prisma.friendship.findUnique({
       where: { id },
@@ -162,10 +136,6 @@ export class FriendshipsService {
     return { message: 'Friendship removed' };
   }
 
-  /**
-   * Lista os amigos (pedidos aceites) do utilizador autenticado.
-   * GET /friendships
-   */
   async listFriends(userId: string) {
     const rows = await this.prisma.friendship.findMany({
       where: {
@@ -179,21 +149,13 @@ export class FriendshipsService {
       orderBy: { updatedAt: 'desc' },
     });
 
-    /** Normaliza para "o outro lado" independentemente da direcção do pedido. */
-    return rows.map((f) => {
-      const friend = f.requesterId === userId ? f.addressee : f.requester;
-      return {
-        friendshipId: f.id,
-        since: f.updatedAt,
-        friend: { ...friend, isOnline: this.realtime.isUserConnected(friend.id) },
-      };
-    });
+    return rows.map((f) => ({
+      friendshipId: f.id,
+      since: f.updatedAt,
+      friend: f.requesterId === userId ? f.addressee : f.requester,
+    }));
   }
 
-  /**
-   * Lista pedidos pendentes recebidos e enviados.
-   * GET /friendships/pending
-   */
   async listPending(userId: string) {
     const rows = await this.prisma.friendship.findMany({
       where: {
@@ -217,10 +179,6 @@ export class FriendshipsService {
     };
   }
 
-  /**
-   * Lista os utilizadores bloqueados pelo utilizador autenticado.
-   * GET /friendships/blocked
-   */
   async listBlocked(userId: string) {
     const rows = await this.prisma.friendship.findMany({
       where: { requesterId: userId, status: FriendshipStatus.BLOCKED },
@@ -236,8 +194,6 @@ export class FriendshipsService {
   }
 
   /**
-   * Bloqueia um utilizador.
-   * POST /users/:id/block
    * Remove qualquer amizade/pedido entre os dois e cria a linha BLOCKED.
    * Um bloqueio do outro lado (B→A) nunca é apagado por esta operação.
    */
@@ -255,14 +211,11 @@ export class FriendshipsService {
       throw new NotFoundException('User not found');
     }
 
-    /** Transacção: limpar relações e registar o bloqueio de forma atómica. */
     await this.prisma.$transaction([
       this.prisma.friendship.deleteMany({
         where: {
           OR: [
-            /** Qualquer linha minha nesta direcção (pedido, amizade ou bloqueio antigo). */
             { requesterId: blockerId, addresseeId: targetId },
-            /** Linhas do outro lado, excepto o bloqueio dele — esse mantém-se. */
             {
               requesterId: targetId,
               addresseeId: blockerId,
@@ -284,10 +237,6 @@ export class FriendshipsService {
     return { message: 'User blocked' };
   }
 
-  /**
-   * Desbloqueia um utilizador.
-   * DELETE /users/:id/block
-   */
   async unblock(blockerId: string, targetId: string) {
     const result = await this.prisma.friendship.deleteMany({
       where: {
@@ -337,10 +286,7 @@ export class FriendshipsService {
     });
   }
 
-  /**
-   * Verifica se existe bloqueio em qualquer direcção entre dois utilizadores.
-   * Usado pela lógica de privacidade (perfil limitado; futuramente chat).
-   */
+  /** Usado pela lógica de privacidade (perfil limitado, DMs, convites). */
   async isBlockedBetween(userA: string, userB: string): Promise<boolean> {
     const count = await this.prisma.friendship.count({
       where: {
@@ -355,7 +301,6 @@ export class FriendshipsService {
     return count > 0;
   }
 
-  /** Encontra a relação (qualquer status) entre dois utilizadores, em qualquer direcção. */
   private findRelation(userA: string, userB: string) {
     return this.prisma.friendship.findFirst({
       where: {

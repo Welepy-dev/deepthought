@@ -148,6 +148,7 @@ dist
 # SvelteKit build / generate output
 .svelte-kit
 
+.env
 # End of https://www.toptal.com/developers/gitignore/api/node
 
 # Playwright e2e smoke suite
