@@ -107,8 +107,8 @@ export const ORIGIN_WORLD_Y = 33; // world row → local y = 0
 // These match the actual tile data in map1.tmj.
 // ← Update if you redesign the map in Tiled.
 //
-const ZONE_A = { minCol: 28, maxCol: 49, minRow: 18, maxRow: 49 }; // GID 3
-const ZONE_B = { minCol: 14, maxCol: 27, minRow: 27, maxRow: 44 }; // GID 4
+const ZONE_A = { minCol: 27, maxCol: 48, minRow: 17, maxRow: 48 }; // GID 3
+const ZONE_B = { minCol: 13, maxCol: 27, minRow: 26, maxRow: 44 }; // GID 4
 
 
 // ─── VALID TILE SET ───────────────────────────────────────────────────────────
