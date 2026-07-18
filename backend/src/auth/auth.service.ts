@@ -218,8 +218,14 @@ export class AuthService {
 
   /** Procura por email sem sensibilidade a maiúsculas (42 guarda emails variados). */
   private findUserByEmail(email: string): Promise<User | null> {
+    const normalizedEmail = email.trim();
+
+    if (!normalizedEmail) {
+      return Promise.resolve(null);
+    }
+
     return this.prisma.user.findFirst({
-      where: { email: { equals: email, mode: 'insensitive' } },
+      where: { email: { equals: normalizedEmail, mode: 'insensitive' } },
     });
   }
 

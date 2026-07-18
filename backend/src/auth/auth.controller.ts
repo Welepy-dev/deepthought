@@ -34,6 +34,21 @@ export class AuthController {
     private readonly otpService: OtpService,
   ) {}
 
+  @Post('email/start')
+  async startEmailLogin(@Body() dto: EmailStartDto): Promise<EmailStartResponse> {
+    return this.authService.startEmailLogin(dto.email);
+  }
+
+  @Post('email/login')
+  async loginWithEmail(@Body() dto: EmailLoginDto): Promise<AuthTokensResponse> {
+    return this.authService.loginWithEmail(dto.email, dto.password);
+  }
+
+  @Post('email/set-password')
+  async setPasswordWithOtp(@Body() dto: SetPasswordDto): Promise<AuthTokensResponse> {
+    return this.authService.setPasswordWithOtp(dto.userId, dto.code, dto.password);
+  }
+
   @Get('42/login')
   @UseFilters(FortyTwoOAuthExceptionFilter)
   @UseGuards(AuthGuard('42'))
