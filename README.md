@@ -98,19 +98,19 @@ AI output was not merged blindly: each change was code-reviewed by a team member
 
 ---
 
-## Team Information
+## Team Members
 
 | Login | Role(s) | Responsibilities |
 |---|---|---|
-| **marcsilv** | Product Owner / Project Manager, Frontend Developer | Defined the product vision and prioritized features; coordinated the team; built the bulk of the UI: design system, cluster/avatar layout, tabbed chat sidebar, profile page, leaderboard, project board, resource sharing UI, admin panel, feedback page, and the legal page layouts; kept the browser console clean and the app responsive. |
-| **djoao** | Tech Lead, Backend Developer | Owned technical decisions and architecture; designed the full Prisma schema; built the 42 API integration (XP/level/coalition/campus/project sync), profile endpoints, achievements unlock logic, leaderboard ranking, the project board CRUD + help-request system, resource upload/listing, and the admin account-management endpoints. |
+| **marcsilv** | Product Owner / Project Manager | Defined the product vision and prioritized features; coordinated the team; built the bulk of the UI: design system, cluster/avatar layout, tabbed chat sidebar, profile page, leaderboard, project board, resource sharing UI, admin panel, feedback page, and the legal page layouts; kept the browser console clean and the app responsive. |
+| **djoao** | Tech Lead | Owned technical decisions and architecture; designed the full Prisma schema; built the 42 API integration (XP/level/coalition/campus/project sync), profile endpoints, achievements unlock logic, leaderboard ranking, the project board CRUD + help-request system, resource upload/listing, and the admin account-management endpoints. |
 | **emonteir** | Developer | Built the friendship system (requests, accept/decline, list, remove), user blocking and its privacy logic, project invitations, the frontend achievement badge display, the notifications dropdown, and the user search page; wired the social features end-to-end between frontend and backend and tested those interactions. |
 | **aborges** | Developer | Built the full authentication stack: email + password sign-in, 42 OAuth integration, JWT access/refresh tokens, email-based 2FA (OTP), and the Privacy Policy / Terms of Service content. |
 | **achivela** | Developer | Set up Socket.IO; built the chat system (DMs, room/cluster messages, global chat, persisted history, typing indicators, read receipts); built the real-time notification delivery (friend requests, new messages, project invitations) and the online/offline presence system; wired "view profile from a chat message". |
 
 ## Project Management
 
-- **Roles** were assigned by pairing each person's strengths with the areas of the project they'd own end-to-end (frontend UI vs. backend domain logic vs. auth vs. social features vs. real-time/chat), with `marcsilv` doubling as PO and PM/Scrum Master given the team size.
+- **Roles** were assigned by pairing each person's strengths with the areas of the project they'd own end-to-end (frontend UI vs. backend domain logic vs. auth vs. social features vs. real-time/chat), with `marcsilv` doubling as PO and PM.
 - **Task organization**: work was broken down per feature area (see the table above) and tracked as GitHub Issues against the repository, with pull requests used for code review before merging into `main`.
 - **Communication**: the team coordinated day-to-day over Slack, with regular syncs to review progress, unblock each other, and re-prioritize the remaining module work against the subject's point requirements.
 
