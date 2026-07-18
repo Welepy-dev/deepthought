@@ -172,7 +172,7 @@ export function startGame(
 	_localDisplayName = localDisplayName;
 
 	const game = new Phaser.Game({
-		type: Phaser.AUTO,
+		type: Phaser.CANVAS,
 		parent,
 		scale: {
 			mode: Phaser.Scale.FIT,
@@ -182,6 +182,7 @@ export function startGame(
 		},
 		backgroundColor: "#111125",
 		input: { activePointers: 3 },
+		audio: { noAudio: true },
 		scene: [GameScene],
 		physics: {
 			default: "arcade",
