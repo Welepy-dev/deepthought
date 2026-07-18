@@ -2,7 +2,7 @@
 
 **42's Deepthought**
 
-Última atualização: 17 de Junho de 2026
+Última atualização: 05 de Junho de 2026
 
 
 ## 1. Aceitação dos Termos
@@ -142,7 +142,7 @@ Esta Plataforma é um projeto académico desenvolvido no âmbito do curso da red
 
 Para questões relacionadas com estes Termos, reportes de abuso, pedidos de eliminação de conta ou apelações de banimento:
 
-**terms@42deepthought.com**
+**aarmandoborges@42gmail.com**
 
 Ou utilize o sistema de feedback integrado na Plataforma.
 

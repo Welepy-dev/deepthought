@@ -3,37 +3,15 @@ import { PrismaService } from '../prisma/prisma.service';
 import { RealtimeService } from '../realtime/realtime.service';
 import { NotificationType, Prisma } from '@prisma/client';
 
-/**
- * Serviço reutilizável de notificações.
- * Centraliza a criação de notificações para todos os módulos.
- * Usado por: AchievementsService, ProjectsService, AuthService.
- *
- * Tipos suportados:
- * - FRIEND_REQUEST / FRIEND_ACCEPTED
- * - HELP_REQUEST
- * - PROJECT_UPDATE
- * - ACHIEVEMENT_UNLOCKED
- * - SYSTEM
- */
 @Injectable()
 export class NotificationsService {
   private readonly logger = new Logger(NotificationsService.name);
 
   constructor(
-    /** Acesso à base de dados para criar e listar notificações */
     private readonly prisma: PrismaService,
-    /** Emissão de eventos socket.io para sessões ligadas do destinatário */
     private readonly realtime: RealtimeService,
   ) {}
 
-  /**
-   * Cria uma nova notificação para um utilizador.
-   * Método base usado por todos os outros métodos específicos.
-   * @param userId ID do utilizador destinatário
-   * @param type Tipo da notificação (enum NotificationType)
-   * @param title Título curto da notificação
-   * @param message Mensagem opcional com mais detalhe
-   */
   async create(
     userId: string,
     type: NotificationType,
@@ -60,23 +38,14 @@ export class NotificationsService {
       this.realtime.emitToUser(userId, 'notification:new', notification);
 
       return notification;
-      } catch (error) {
-            const message =
-            error instanceof Error ? error.message : String(error);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
 
-            this.logger.error(
-            `Failed to create notification for user ${userId}: ${message}`,
-            );
-            return null;
-        }
+      this.logger.error(`Failed to create notification for user ${userId}: ${message}`);
+      return null;
+    }
   }
 
-  /**
-   * Notifica o desbloqueio de uma conquista.
-   * @param userId ID do utilizador
-   * @param achievementTitle Nome da conquista
-   * @param xpReward XP atribuído pela conquista
-   */
   async notifyAchievementUnlocked(
     userId: string,
     achievementTitle: string,
@@ -90,12 +59,6 @@ export class NotificationsService {
     );
   }
 
-  /**
-   * Notifica que alguém ofereceu ajuda num projecto.
-   * @param userId ID do utilizador que pediu ajuda
-   * @param helperLogin Login de quem ofereceu ajuda
-   * @param projectName Nome do projecto
-   */
   async notifyHelpOffered(
     userId: string,
     helperLogin: string,
@@ -108,11 +71,6 @@ export class NotificationsService {
     );
   }
 
-  /**
-   * Notifica que um pedido de amizade foi aceite.
-   * @param userId ID do utilizador destinatário
-   * @param acceptorLogin Login de quem aceitou
-   */
   async notifyFriendAccepted(userId: string, acceptorLogin: string) {
     return this.create(
       userId,
@@ -121,11 +79,6 @@ export class NotificationsService {
     );
   }
 
-  /**
-   * Notifica uma nova mensagem privada recebida (destinatário offline).
-   * @param userId ID do destinatário
-   * @param senderLogin Login de quem enviou a mensagem
-   */
   async notifyNewMessage(userId: string, senderLogin: string) {
     return this.create(
       userId,
@@ -134,12 +87,6 @@ export class NotificationsService {
     );
   }
 
-  /**
-   * Notifica um convite para projecto recebido.
-   * @param userId ID do convidado
-   * @param inviterLogin Login de quem convidou
-   * @param projectName Nome do projecto
-   */
   async notifyProjectInvite(
     userId: string,
     inviterLogin: string,
@@ -152,13 +99,6 @@ export class NotificationsService {
     );
   }
 
-  /**
-   * Notifica o autor do convite sobre a resposta do convidado.
-   * @param userId ID de quem convidou
-   * @param inviteeLogin Login do convidado
-   * @param projectName Nome do projecto
-   * @param accepted true se o convite foi aceite
-   */
   async notifyProjectInviteResponse(
     userId: string,
     inviteeLogin: string,
@@ -175,11 +115,7 @@ export class NotificationsService {
   }
 
   /**
-   * Notifica um pedido de amizade recebido.
    * O friendshipId no payload permite aceitar/recusar directamente na UI.
-   * @param userId ID do utilizador destinatário
-   * @param requesterLogin Login de quem enviou o pedido
-   * @param friendshipId ID da linha Friendship pendente
    */
   async notifyFriendRequest(
     userId: string,
@@ -195,53 +131,16 @@ export class NotificationsService {
     );
   }
 
-  /**
-   * Notifica um único utilizador com uma mensagem de sistema
-   * (ex.: ban/unban, alteração de role, novo recurso num projecto).
-   * @param userId ID do destinatário
-   * @param title Título da notificação
-   * @param message Mensagem opcional com mais detalhe
-   */
   async notifySystem(userId: string, title: string, message?: string) {
     return this.create(userId, NotificationType.SYSTEM, title, message);
   }
 
-  /**
-   * Cria notificações SYSTEM persistidas para vários utilizadores de uma vez
-   * (ex.: anúncio da plataforma) e só empurra em tempo real para quem está
-   * ligado — evita `emitToUser` a rooms vazias para o resto da base de utilizadores.
-   * @param userIds IDs dos destinatários
-   * @param title Título da notificação
-   * @param message Mensagem opcional com mais detalhe
-   */
   async notifySystemBroadcast(userIds: string[], title: string, message?: string) {
-    if (userIds.length === 0) return;
-
-    const notifications = await this.prisma.notification.createManyAndReturn({
-      data: userIds.map((userId) => ({
-        userId,
-        type: NotificationType.SYSTEM,
-        title,
-        message,
-        isRead: false,
-      })),
-    });
-
-    for (const notification of notifications) {
-      if (this.realtime.isUserConnected(notification.userId)) {
-        this.realtime.emitToUser(notification.userId, 'notification:new', notification);
-      }
-    }
+    return Promise.allSettled(
+      userIds.map((userId) => this.notifySystem(userId, title, message)),
+    );
   }
 
-  /**
-   * Lista as notificações de um utilizador com paginação real.
-   * GET /notifications
-   * @param userId ID do utilizador
-   * @param onlyUnread Se verdadeiro, retorna apenas não lidas
-   * @param page Página (começa em 1)
-   * @param limit Resultados por página
-   */
   async findAll(userId: string, onlyUnread = false, page = 1, limit = 20) {
     const where = onlyUnread ? { userId, isRead: false } : { userId };
     const skip = (page - 1) * limit;
@@ -270,11 +169,7 @@ export class NotificationsService {
     };
   }
 
-  /**
-   * Marca uma notificação como lida.
-   * PATCH /notifications/:id/read
-   * O filtro por userId garante que só marca notificações próprias.
-   */
+  /** O filtro por userId garante que só marca notificações próprias. */
   async markAsRead(userId: string, notificationId: string) {
     const result = await this.prisma.notification.updateMany({
       where: { id: notificationId, userId },
@@ -288,10 +183,6 @@ export class NotificationsService {
     return { message: 'Notification marked as read' };
   }
 
-  /**
-   * Marca todas as notificações do utilizador como lidas.
-   * PATCH /notifications/read-all
-   */
   async markAllAsRead(userId: string) {
     const result = await this.prisma.notification.updateMany({
       where: { userId, isRead: false },

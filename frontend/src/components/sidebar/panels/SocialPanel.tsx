@@ -17,7 +17,6 @@ import {
 
 interface Props {
   currentUserId: string | null
-  /** Abre a DM com um utilizador no painel de chat. */
   onOpenDm: (userId: string) => void
 }
 
@@ -39,20 +38,16 @@ function formatLastSeen(iso: string | null): string {
 export default function SocialPanel({ currentUserId, onOpenDm }: Props) {
   const [tab, setTab] = useState<Tab>('friends')
 
-  // ── Search state ─────────────────────────────────────────
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<UserSearchResult[]>([])
   const [searching, setSearching] = useState(false)
-  /** userId → feedback da última acção nessa linha. */
   const [rowState, setRowState] = useState<Record<string, string>>({})
 
-  // ── Friends state ────────────────────────────────────────
   const [friends, setFriends] = useState<FriendEntry[]>([])
   const [pending, setPending] = useState<PendingLists>({ incoming: [], outgoing: [] })
   const [blocked, setBlocked] = useState<BlockedEntry[]>([])
   const [loadingFriends, setLoadingFriends] = useState(false)
 
-  /** Pesquisa com debounce; só pesquisa depois de haver texto. */
   useEffect(() => {
     if (tab !== 'search') return
     const term = query.trim()

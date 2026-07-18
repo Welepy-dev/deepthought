@@ -2,7 +2,7 @@
 
 **42's Deepthought**
 
-Última atualização: 17 de Junho de 2026
+Última atualização: 05 de Julho de 2026
 
 ## 1. Introdução
 
@@ -102,7 +102,7 @@ A Plataforma é destinada exclusivamente a estudantes matriculados na rede 42. O
 
 Para questões relacionadas com privacidade, pedidos de acesso ou eliminação de dados, contacte a equipa responsável pela Plataforma através do sistema de feedback disponível na aplicação ou pelo e-mail:
 
-**privacy@42deepthoght.com**
+**aarmandoborges@gmail.com**
 
 ## 11. Alterações a esta Política
 

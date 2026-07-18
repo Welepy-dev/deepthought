@@ -76,4 +76,24 @@ describe('AuthService', () => {
     expect(result).toEqual({ status: 'setup', userId: 'user-1' });
     expect(otpService.generateAndSendOtp).not.toHaveBeenCalled();
   });
+
+  it('should trim whitespace before looking up an email', async () => {
+    prismaService.user.findFirst.mockResolvedValue({
+      id: 'user-2',
+      email: 'student@42.fr',
+      passwordHash: 'hash',
+      isBanned: false,
+      isEmailVerified: true,
+    });
+
+    await expect(service.startEmailLogin('  student@42.fr  ')).resolves.toEqual({
+      status: 'password',
+    });
+
+    expect(prismaService.user.findFirst).toHaveBeenCalledWith({
+      where: {
+        email: { equals: 'student@42.fr', mode: 'insensitive' },
+      },
+    });
+  });
 });

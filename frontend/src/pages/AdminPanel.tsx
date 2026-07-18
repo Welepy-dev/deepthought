@@ -13,20 +13,6 @@ import {
   type SortOrder,
 } from '../api/admin'
 
-const SORT_OPTIONS: { label: string; sortBy: AdminUserSortBy; order: SortOrder }[] = [
-  { label: 'Newest', sortBy: 'createdAt', order: 'desc' },
-  { label: 'Level (high-low)', sortBy: 'level', order: 'desc' },
-  { label: 'Login (A-Z)', sortBy: 'login', order: 'asc' },
-  { label: 'Last seen', sortBy: 'lastSeenAt', order: 'desc' },
-]
-
-/**
- * Painel de administração — tabela sobre os endpoints /admin/users.
- * MODERATOR e ADMIN podem aceder e listar/banir; alterar role e apagar
- * utilizadores ficam reservados a ADMIN (o backend já as recusa via
- * RolesGuard — os controlos ficam apenas ocultos aqui para não convidar
- * a tentar uma acção que vai dar 403).
- */
 export default function AdminPanel() {
   const navigate = useNavigate()
   const [authorized, setAuthorized] = useState(false)

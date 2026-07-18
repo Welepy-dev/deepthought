@@ -13,10 +13,9 @@ import {
 import { ResourceType } from '@prisma/client';
 import { Type } from 'class-transformer';
 
-/**
- * DTO para criar um novo recurso partilhado (URL-based).
- * POST /resources
- */
+export type ResourceSortBy = 'createdAt' | 'title' | 'fileSize';
+export type SortOrder = 'asc' | 'desc';
+
 export class CreateResourceDto {
   @IsString()
   @MinLength(3)
@@ -40,10 +39,6 @@ export class CreateResourceDto {
   projectId!: string;
 }
 
-/**
- * DTO para upload de ficheiro (multipart/form-data).
- * POST /resources/upload
- */
 export class UploadResourceDto {
   @IsString()
   @MinLength(3)
@@ -59,53 +54,33 @@ export class UploadResourceDto {
   projectId!: string;
 }
 
-/**
- * DTO para query parameters de listagem de recursos.
- * GET /resources
- */
 export class ResourcesQueryDto {
-  /**
-   * Filtrar por projecto (ID do projecto).
-   */
   @IsOptional()
   @IsString()
   projectId?: string;
 
-  /**
-   * Filtrar por tipo de recurso.
-   */
   @IsOptional()
   @IsEnum(ResourceType)
   type?: ResourceType;
 
-  /** Página (começa em 1) */
+  @IsOptional()
+  @IsIn(['createdAt', 'title', 'fileSize'])
+  sortBy?: ResourceSortBy = 'createdAt';
+
+  @IsOptional()
+  @IsIn(['asc', 'desc'])
+  order?: SortOrder = 'desc';
+
   @IsOptional()
   @Type(() => Number)
   @IsInt()
   @Min(1)
   page?: number = 1;
 
-  /** Resultados por página */
   @IsOptional()
   @Type(() => Number)
   @IsInt()
   @Min(1)
   @Max(50)
   limit?: number = 20;
-
-  /**
-   * Campo de ordenação.
-   * @default "createdAt"
-   */
-  @IsOptional()
-  @IsIn(['createdAt', 'title', 'fileSize'])
-  sortBy?: 'createdAt' | 'title' | 'fileSize';
-
-  /**
-   * Direcção de ordenação.
-   * @default "desc"
-   */
-  @IsOptional()
-  @IsIn(['asc', 'desc'])
-  order?: 'asc' | 'desc';
 }
