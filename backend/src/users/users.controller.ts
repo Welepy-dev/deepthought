@@ -2,17 +2,26 @@ import {
   Controller,
   Get,
   Patch,
+  Post,
   Param,
   Body,
   Query,
   Req,
   UseGuards,
+  UseInterceptors,
+  UploadedFile,
+  BadRequestException,
   ValidationPipe,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { UsersService } from './users.service';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { UsersQueryDto } from './dto/users-query.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { FileUploadService, FILE_UPLOAD_CONFIG } from '../resources/file-upload.service';
+
+/** Avatares só aceitam imagens — subconjunto do allowlist geral de uploads. */
+const AVATAR_MIME_TYPES = ['image/png', 'image/jpeg', 'image/gif', 'image/webp'];
 
 @Controller('users')
 @UseGuards(JwtAuthGuard)

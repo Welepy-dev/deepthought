@@ -40,12 +40,19 @@ export interface UserSearchPage {
   meta: { total: number; page: number; limit: number; totalPages: number }
 }
 
+export type UserSortBy = 'level' | 'login' | 'lastSeenAt'
+export type SortOrder = 'asc' | 'desc'
+
 export async function searchUsers(
   login = '',
   page = 1,
+  sortBy?: UserSortBy,
+  order?: SortOrder,
 ): Promise<UserSearchPage> {
   const params = new URLSearchParams({ page: String(page), limit: '20' })
   if (login) params.set('login', login)
+  if (sortBy) params.set('sortBy', sortBy)
+  if (order) params.set('order', order)
   const response = await apiFetch(`${API_BASE_URL}/users?${params}`)
   if (!response.ok) throw new Error('Failed to search users')
   return response.json()

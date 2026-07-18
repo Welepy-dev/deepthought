@@ -11,7 +11,16 @@ import {
 
 import { AuthGuard } from '@nestjs/passport';
 
-import { AuthService } from './auth.service';
+import {
+  AuthService,
+  AuthTokensResponse,
+  EmailStartResponse,
+} from './auth.service';
+import {
+  EmailLoginDto,
+  EmailStartDto,
+  SetPasswordDto,
+} from './dto/email-auth.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { FortyTwoOAuthExceptionFilter } from './filters/forty-two-oauth-exception.filter';
 import { OtpService, OtpTokens } from './otp/otp.service';

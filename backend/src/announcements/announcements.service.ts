@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { RealtimeService } from '../realtime/realtime.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import { CreateAnnouncementDto } from './dto/announcement.dto';
 
 @Injectable()
@@ -8,6 +9,8 @@ export class AnnouncementsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly realtime: RealtimeService,
+    /** Notificações SYSTEM persistidas, para quem não está ligado no momento */
+    private readonly notifications: NotificationsService,
   ) {}
 
   async findAll(userId: string) {
@@ -39,6 +42,17 @@ export class AnnouncementsService {
     });
 
     this.realtime.emitToAll('announcement:new', announcement);
+
+    /** Notificação SYSTEM persistida para todos (excepto o autor) — sobrevive a offline. */
+    const recipients = await this.prisma.user.findMany({
+      where: { isBanned: false, id: { not: authorId } },
+      select: { id: true },
+    });
+    await this.notifications.notifySystemBroadcast(
+      recipients.map((u) => u.id),
+      `📢 ${announcement.title}`,
+      announcement.body,
+    );
 
     return announcement;
   }

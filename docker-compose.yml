@@ -38,11 +38,29 @@ services:
     restart: unless-stopped
     ports:
       - "5173:5173"
+    environment:
+      VITE_SERVER_ORIGIN: https://localhost:8443
+      VITE_HMR_CLIENT_PORT: 8443
     depends_on:
       - backend
     volumes:
       - ./frontend:/app
       - /app/node_modules
+    networks:
+      - transcendence_network
+
+  nginx:
+    image: nginx:1.27-alpine
+    container_name: transcendence_nginx
+    restart: unless-stopped
+    ports:
+      - "8443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/certs:/etc/nginx/certs:ro
+    depends_on:
+      - backend
+      - frontend
     networks:
       - transcendence_network
 

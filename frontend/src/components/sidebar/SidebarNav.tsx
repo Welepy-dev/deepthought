@@ -115,7 +115,7 @@ export default function SidebarNav({
         )
       })}
 
-      {/* Atalho para a página de administração (apenas admins) */}
+      {/* Atalho para a página de administração (admins e moderadores) */}
       {isAdmin && (
         <button
           onClick={() => navigate('/Admin')}

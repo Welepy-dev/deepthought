@@ -8,6 +8,7 @@ import {
   type ChatRoomSummary,
 } from '../../../api/chat'
 import { fetchPublicProfile, type PublicProfile } from '../../../api/users'
+import Avatar from '../../Avatar'
 
 interface Props {
   currentUserId: string | null
@@ -400,19 +401,12 @@ export default function ChatPanel({ currentUserId, pendingDmUserId, onDmConsumed
       {profile && (
         <div className="absolute inset-0 z-20 bg-black/70 flex items-center justify-center p-4">
           <div className="w-full bg-neutral_contrast border-b-4 border-r-4 border-l-2 border-t-2 border-black p-4 flex flex-col items-center gap-2">
-            {profile.avatar ? (
-              <img
-                src={profile.avatar}
-                alt={profile.login}
-                className="w-12 h-12 border-2 border-black object-cover"
-              />
-            ) : (
-              <div className="w-12 h-12 bg-black/40 border-2 border-black flex items-center justify-center">
-                <span className="font-pressStart text-contrast text-sm">
-                  {(profile.displayName || profile.login).charAt(0).toUpperCase()}
-                </span>
-              </div>
-            )}
+            <Avatar
+              url={profile.avatar}
+              name={profile.displayName || profile.login}
+              size={48}
+              className="!border-2"
+            />
             <p className="font-pressStart text-[10px] text-white">{profile.displayName}</p>
             <p className="font-pressStart text-[9px] text-white/50">@{profile.login}</p>
             {!profile.limited && profile.level !== undefined && (

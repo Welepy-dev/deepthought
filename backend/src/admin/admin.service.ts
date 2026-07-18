@@ -6,6 +6,7 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import {
   CreateUserDto,
   AdminUpdateUserDto,
@@ -21,7 +22,7 @@ export class AdminService {
   constructor(private readonly prisma: PrismaService) {}
 
   async findAll(query: AdminUsersQueryDto) {
-    const { role, campus, banned, login, page = 1, limit = 20 } = query;
+    const { role, campus, banned, login, page = 1, limit = 20, sortBy, order } = query;
     const skip = (page - 1) * limit;
 
     const where: any = {};
@@ -36,7 +37,7 @@ export class AdminService {
         where,
         skip,
         take: limit,
-        orderBy: { createdAt: 'desc' },
+        orderBy: { [ADMIN_USER_SORT_FIELDS[sortBy ?? 'createdAt']]: order ?? 'desc' },
         select: {
           id: true,
           login: true,
@@ -142,13 +143,21 @@ export class AdminService {
 
     this.logger.warn(`Admin ${adminId} banning user ${id}`);
 
-    return this.prisma.user.update({
+    const banned = await this.prisma.user.update({
       where: { id },
       data: {
         isBanned: true,
         bannedAt: new Date(),
       },
     });
+
+    await this.notifications.notifySystem(
+      id,
+      '🚫 A tua conta foi suspensa',
+      dto.reason,
+    );
+
+    return banned;
   }
 
   async unban(id: string) {
@@ -160,13 +169,17 @@ export class AdminService {
 
     this.logger.log(`Unbanning user ${id}`);
 
-    return this.prisma.user.update({
+    const unbanned = await this.prisma.user.update({
       where: { id },
       data: {
         isBanned: false,
         bannedAt: null,
       },
     });
+
+    await this.notifications.notifySystem(id, '✅ A tua conta foi reativada');
+
+    return unbanned;
   }
 
   async updateRole(id: string, adminId: string, dto: UpdateRoleDto) {
@@ -178,10 +191,17 @@ export class AdminService {
 
     this.logger.log(`Changing role of user ${id} to ${dto.role}`);
 
-    return this.prisma.user.update({
+    const updated = await this.prisma.user.update({
       where: { id },
       data: { role: dto.role },
     });
+
+    await this.notifications.notifySystem(
+      id,
+      `🔧 O teu cargo foi alterado para ${dto.role}`,
+    );
+
+    return updated;
   }
 
   private async findOneOrThrow(id: string) {

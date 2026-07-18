@@ -10,6 +10,10 @@ import { FriendshipsService } from '../friendships/friendships.service';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { UsersQueryDto } from './dto/users-query.dto';
 import { MappedFortyTwoProfile } from '../integrations/fortytwo/fortytwo.interfaces';
+import { FileUploadService } from '../resources/file-upload.service';
+
+/** Whitelist explícita — nunca interpolar `sortBy` directamente num orderBy do Prisma. */
+const USER_SORT_FIELDS = { level: 'level', login: 'login', lastSeenAt: 'lastSeenAt' } as const;
 
 @Injectable()
 export class UsersService {
@@ -18,10 +22,12 @@ export class UsersService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly friendships: FriendshipsService,
+    /** Apagar o ficheiro do avatar anterior quando substituído */
+    private readonly fileUploadService: FileUploadService,
   ) {}
 
   async findAll(query: UsersQueryDto) {
-    const { login, campus, coalition, page = 1, limit = 20 } = query;
+    const { login, campus, coalition, page = 1, limit = 20, sortBy, order } = query;
 
     const skip = (page - 1) * limit;
 

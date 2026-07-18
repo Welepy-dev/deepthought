@@ -9,6 +9,7 @@ import {
 import { FriendshipStatus, Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { RealtimeService } from '../realtime/realtime.service';
 
 const FRIEND_SELECT = {
   id: true,
@@ -34,6 +35,8 @@ export class FriendshipsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly notifications: NotificationsService,
+    /** Estado de ligação socket.io para o indicador online/offline */
+    private readonly realtime: RealtimeService,
   ) {}
 
   async sendRequest(

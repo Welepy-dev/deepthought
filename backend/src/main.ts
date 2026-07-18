@@ -17,6 +17,12 @@ async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
 
   /**
+   * Prefixo global da API: nginx só precisa de 3 locations (/api, /uploads,
+   * /socket.io) para fazer proxy do backend inteiro por HTTPS.
+   */
+  app.setGlobalPrefix('api');
+
+  /**
    * O frontend Vite chama o backend por origem diferente durante OAuth/OTP.
    * Sem CORS, o browser bloqueia POST /auth/otp/verify e o React cai em "Server error".
    */

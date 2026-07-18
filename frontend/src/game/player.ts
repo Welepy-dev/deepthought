@@ -152,7 +152,7 @@ export class Player {
 		this.lx = lx;
 		this.ly = ly;
 
-		const { wx, wy } = toWorld(lx, ly);
+		const { wx, wy } = toWorld(lx + 1.1, ly + 0.5);
 		const iso = cartToIso(wx, wy);
 
 		const x = iso.x + this.offsetX + TILE_HEIGHT / 2;
@@ -184,7 +184,7 @@ export class Player {
 		this.lx = lx;
 		this.ly = ly;
 
-		const { wx, wy } = toWorld(lx, ly);
+		const { wx, wy } = toWorld(lx, ly - 1);
 		const iso = cartToIso(wx, wy);
 
 		const x = iso.x + this.offsetX + TILE_HEIGHT / 2;

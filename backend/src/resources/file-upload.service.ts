@@ -9,6 +9,16 @@ export const FILE_UPLOAD_CONFIG = {
   limits: { fileSize: 10 * 1024 * 1024 },
 };
 
+/**
+ * Modelo de acesso: /uploads é servido publicamente sem autenticação
+ * (app.useStaticAssets em main.ts), de propósito — avatares precisam de ser
+ * carregáveis por <img> sem conseguir enviar um header Bearer, e os links de
+ * download de recursos devem continuar a funcionar fora da SPA (ex.: colados
+ * num chat externo). A "proteção" é o nome do ficheiro: um UUID v4 por
+ * upload (ver saveFile), por isso o directório não é listável e adivinhar
+ * um nome existente é inviável. Não é adequado para ficheiros verdadeiramente
+ * privados — só para o que já era, de qualquer forma, partilhável.
+ */
 const UPLOAD_DIR = join(process.cwd(), 'uploads');
 
 const ALLOWED_MIME_TYPES = [

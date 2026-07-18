@@ -3,12 +3,20 @@ import { fetchProjectCatalog, type ProjectCatalogItem } from '../../../api/proje
 import {
   fetchResources,
   createResource,
-  uploadResource,
+  uploadResourceWithProgress,
   deleteResource,
   type Resource,
   type ResourceType,
+  type ResourceSortBy,
+  type SortOrder,
 } from '../../../api/resources'
-import { API_BASE_URL } from '../../../config/api'
+import { SERVER_ORIGIN } from '../../../config/api'
+
+const SORT_OPTIONS: { label: string; sortBy: ResourceSortBy; order: SortOrder }[] = [
+  { label: 'Newest', sortBy: 'createdAt', order: 'desc' },
+  { label: 'Title (A-Z)', sortBy: 'title', order: 'asc' },
+  { label: 'Size (large-small)', sortBy: 'fileSize', order: 'desc' },
+]
 
 const RESOURCE_TYPES: ResourceType[] = ['LINK', 'PDF', 'VIDEO', 'ARTICLE', 'GITHUB', 'OTHER', 'FILE']
 
@@ -46,10 +54,24 @@ export default function ResourcesPanel() {
   const [showForm, setShowForm] = useState(false)
   const [form, setForm] = useState<CreateForm>(EMPTY_FORM)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  const [filePreview, setFilePreview] = useState<string | null>(null)
+  const [uploadProgress, setUploadProgress] = useState<number | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [formError, setFormError] = useState('')
   const [currentUserId, setCurrentUserId] = useState<string | null>(null)
+  const [sortIndex, setSortIndex] = useState(0)
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  /** object URL só existe enquanto o ficheiro está seleccionado; liberta memória ao trocar/limpar. */
+  useEffect(() => {
+    if (!selectedFile || !selectedFile.type.startsWith('image/')) {
+      setFilePreview(null)
+      return
+    }
+    const url = URL.createObjectURL(selectedFile)
+    setFilePreview(url)
+    return () => URL.revokeObjectURL(url)
+  }, [selectedFile])
 
   useEffect(() => {
     const token = localStorage.getItem('token')
@@ -73,11 +95,12 @@ export default function ResourcesPanel() {
     if (!selectedId) return
     setLoadingResources(true)
     setResources([])
-    fetchResources(selectedId)
+    const { sortBy, order } = SORT_OPTIONS[sortIndex]
+    fetchResources(selectedId, sortBy, order)
       .then(setResources)
       .catch(() => {})
       .finally(() => setLoadingResources(false))
-  }, [selectedId])
+  }, [selectedId, sortIndex])
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault()
@@ -93,13 +116,14 @@ export default function ResourcesPanel() {
       }
       setSubmitting(true)
       setFormError('')
+      setUploadProgress(0)
       try {
         const fd = new FormData()
         fd.append('file', selectedFile)
         fd.append('title', form.title.trim())
         fd.append('projectId', selectedId)
         if (form.description.trim()) fd.append('description', form.description.trim())
-        const created = await uploadResource(fd)
+        const created = await uploadResourceWithProgress(fd, setUploadProgress)
         setResources(prev => [created, ...prev])
         setForm(EMPTY_FORM)
         setSelectedFile(null)
@@ -108,6 +132,7 @@ export default function ResourcesPanel() {
         setFormError(err.message ?? 'Failed to upload file')
       } finally {
         setSubmitting(false)
+        setUploadProgress(null)
       }
       return
     }
@@ -180,7 +205,7 @@ export default function ResourcesPanel() {
         </button>
       </div>
 
-      <div className="px-4 pt-3 pb-2 border-b-4 border-black shrink-0">
+      <div className="px-4 pt-3 pb-2 border-b-4 border-black shrink-0 flex flex-col gap-2">
         <select
           value={selectedId}
           onChange={e => { setSelectedId(e.target.value); setShowForm(false) }}
@@ -188,6 +213,15 @@ export default function ResourcesPanel() {
         >
           {projects.map(p => (
             <option key={p.id} value={p.id}>{p.name}</option>
+          ))}
+        </select>
+        <select
+          value={sortIndex}
+          onChange={e => setSortIndex(Number(e.target.value))}
+          className="w-full px-2 py-1.5 bg-black/40 text-white font-pressStart text-[10px] focus:outline-none border-b-2 border-r-2 border-l border-t border-black"
+        >
+          {SORT_OPTIONS.map((opt, i) => (
+            <option key={opt.label} value={i}>{opt.label}</option>
           ))}
         </select>
       </div>
@@ -216,9 +250,26 @@ export default function ResourcesPanel() {
                 className="text-[10px] font-pressStart text-white file:mr-2 file:px-2 file:py-1 file:border file:border-white/30 file:bg-black/40 file:text-white file:text-[10px] file:font-pressStart file:cursor-pointer"
               />
               {selectedFile && (
-                <p className="font-pressStart text-[8px] text-white/50">
-                  {selectedFile.name} ({formatFileSize(selectedFile.size)})
-                </p>
+                <div className="flex items-center gap-2">
+                  {filePreview && (
+                    <img
+                      src={filePreview}
+                      alt="Preview"
+                      className="w-8 h-8 object-cover border border-white/30 shrink-0"
+                    />
+                  )}
+                  <p className="font-pressStart text-[8px] text-white/50">
+                    {selectedFile.name} ({formatFileSize(selectedFile.size)})
+                  </p>
+                </div>
+              )}
+              {uploadProgress !== null && (
+                <div className="w-full h-2 bg-black/40 border border-black">
+                  <div
+                    className="h-full bg-contrast transition-all"
+                    style={{ width: `${uploadProgress}%` }}
+                  />
+                </div>
               )}
             </div>
           ) : (
@@ -277,7 +328,7 @@ export default function ResourcesPanel() {
             <div className="flex items-start justify-between gap-2">
               {r.type === 'FILE' ? (
                 <a
-                  href={`${API_BASE_URL}/uploads/${r.url}`}
+                  href={`${SERVER_ORIGIN}/uploads/${r.url}`}
                   download={r.originalName ?? undefined}
                   className="font-pressStart text-[10px] text-contrast hover:text-secundary leading-relaxed flex-1"
                 >

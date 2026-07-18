@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { fetchMe } from '../api/character'
+import Avatar from '../components/Avatar'
 import {
   fetchAdminUsers,
   banUser,
@@ -8,14 +9,18 @@ import {
   updateUserRole,
   deleteUser,
   type AdminUser,
+  type AdminUserSortBy,
+  type SortOrder,
 } from '../api/admin'
 
 export default function AdminPanel() {
   const navigate = useNavigate()
   const [authorized, setAuthorized] = useState(false)
+  const [isAdmin, setIsAdmin] = useState(false)
   const [users, setUsers] = useState<AdminUser[]>([])
   const [myId, setMyId] = useState('')
   const [search, setSearch] = useState('')
+  const [sortIndex, setSortIndex] = useState(0)
   const [page, setPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
   const [loading, setLoading] = useState(true)
@@ -24,11 +29,12 @@ export default function AdminPanel() {
   useEffect(() => {
     fetchMe()
       .then((me) => {
-        if (me.role !== 'ADMIN') {
+        if (me.role !== 'ADMIN' && me.role !== 'MODERATOR') {
           navigate('/Game', { replace: true })
           return
         }
         setMyId(me.id)
+        setIsAdmin(me.role === 'ADMIN')
         setAuthorized(true)
       })
       .catch(() => navigate('/', { replace: true }))
@@ -37,14 +43,15 @@ export default function AdminPanel() {
   const load = useCallback(() => {
     setLoading(true)
     setError('')
-    fetchAdminUsers(page, search.trim())
+    const { sortBy, order } = SORT_OPTIONS[sortIndex]
+    fetchAdminUsers(page, search.trim(), sortBy, order)
       .then((res) => {
         setUsers(res.data)
         setTotalPages(res.meta.totalPages)
       })
       .catch((err: any) => setError(err.message ?? 'Failed to load users'))
       .finally(() => setLoading(false))
-  }, [page, search])
+  }, [page, search, sortIndex])
 
   useEffect(() => {
     if (!authorized) return
@@ -86,12 +93,23 @@ export default function AdminPanel() {
         </button>
       </div>
 
-      <input
-        value={search}
-        onChange={(e) => { setSearch(e.target.value); setPage(1) }}
-        placeholder="Search by login..."
-        className="px-3 py-2 bg-white font-pressStart text-xs focus:outline-none border-b-4 border-r-4 border-l-2 border-t-2 border-black w-full sm:w-64"
-      />
+      <div className="flex flex-col sm:flex-row gap-2">
+        <input
+          value={search}
+          onChange={(e) => { setSearch(e.target.value); setPage(1) }}
+          placeholder="Search by login..."
+          className="px-3 py-2 bg-white font-pressStart text-xs focus:outline-none border-b-4 border-r-4 border-l-2 border-t-2 border-black w-full sm:w-64"
+        />
+        <select
+          value={sortIndex}
+          onChange={(e) => { setSortIndex(Number(e.target.value)); setPage(1) }}
+          className="px-3 py-2 bg-black/40 text-white font-pressStart text-xs focus:outline-none border-b-4 border-r-4 border-l-2 border-t-2 border-black w-full sm:w-48"
+        >
+          {SORT_OPTIONS.map((opt, i) => (
+            <option key={opt.label} value={i}>{opt.label}</option>
+          ))}
+        </select>
+      </div>
 
       {error && <p className="font-pressStart text-[10px] text-red-400">{error}</p>}
 
@@ -119,9 +137,12 @@ export default function AdminPanel() {
               return (
                 <tr key={u.id} className="border-t border-black/40">
                   <td className="px-3 py-2">
-                    <div className="flex flex-col">
-                      <span className="font-pressStart text-[10px] text-white">{u.displayName}</span>
-                      <span className="font-pressStart text-[8px] text-white/40">@{u.login} · {u.email}</span>
+                    <div className="flex items-center gap-2">
+                      <Avatar url={u.avatar} name={u.displayName} size={24} />
+                      <div className="flex flex-col min-w-0">
+                        <span className="font-pressStart text-[10px] text-white truncate">{u.displayName}</span>
+                        <span className="font-pressStart text-[8px] text-white/40 truncate">@{u.login} · {u.email}</span>
+                      </div>
                     </div>
                   </td>
                   <td className="px-3 py-2 font-pressStart text-[9px] text-white/70">
@@ -134,18 +155,22 @@ export default function AdminPanel() {
                     {u.isEmailVerified ? '✓' : '—'}
                   </td>
                   <td className="px-3 py-2">
-                    <select
-                      value={u.role}
-                      disabled={self}
-                      onChange={(e) =>
-                        run(() => updateUserRole(u.id, e.target.value as AdminUser['role']))
-                      }
-                      className="px-1 py-0.5 bg-black/40 text-white font-pressStart text-[8px] focus:outline-none border border-black disabled:opacity-40"
-                    >
-                      {(['USER', 'MODERATOR', 'ADMIN'] as const).map((r) => (
-                        <option key={r} value={r}>{r}</option>
-                      ))}
-                    </select>
+                    {isAdmin ? (
+                      <select
+                        value={u.role}
+                        disabled={self}
+                        onChange={(e) =>
+                          run(() => updateUserRole(u.id, e.target.value as AdminUser['role']))
+                        }
+                        className="px-1 py-0.5 bg-black/40 text-white font-pressStart text-[8px] focus:outline-none border border-black disabled:opacity-40"
+                      >
+                        {(['USER', 'MODERATOR', 'ADMIN'] as const).map((r) => (
+                          <option key={r} value={r}>{r}</option>
+                        ))}
+                      </select>
+                    ) : (
+                      <span className="font-pressStart text-[9px] text-white/70">{u.role}</span>
+                    )}
                   </td>
                   <td className="px-3 py-2 font-pressStart text-[9px]">
                     {u.isBanned
@@ -171,7 +196,7 @@ export default function AdminPanel() {
                           </button>
                         )
                       )}
-                      {!self && (
+                      {!self && isAdmin && (
                         <button
                           onClick={() => handleDelete(u)}
                           className="font-pressStart text-[8px] text-red-400 border border-red-400/50 px-1.5 py-0.5"

@@ -1,5 +1,5 @@
 import { io, Socket } from 'socket.io-client'
-import { API_BASE_URL } from '../config/api'
+import { SERVER_ORIGIN } from '../config/api'
 import { refreshToken } from './refresh'
 
 let socket: Socket | null = null
@@ -8,7 +8,7 @@ let socket: Socket | null = null
 export function connectSocket(): Socket {
   if (socket) return socket
 
-  socket = io(API_BASE_URL, {
+  socket = io(SERVER_ORIGIN, {
     // Função em vez de valor estático: cada reconexão relê o token actual,
     // que pode já ter sido rodado pelo refresh.ts entretanto.
     auth: (cb) => cb({ token: localStorage.getItem('token') }),

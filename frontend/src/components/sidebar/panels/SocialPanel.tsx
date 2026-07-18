@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { searchUsers, type UserSearchResult } from '../../../api/users'
+import Avatar from '../../Avatar'
 import {
   listFriends,
   listPending,
@@ -20,6 +21,19 @@ interface Props {
 }
 
 type Tab = 'search' | 'friends'
+
+/** Texto relativo curto para "última vez visto"; null quando o utilizador nunca ligou. */
+function formatLastSeen(iso: string | null): string {
+  if (!iso) return 'never online'
+  const diffMs = Date.now() - new Date(iso).getTime()
+  const minutes = Math.floor(diffMs / 60000)
+  if (minutes < 1) return 'just now'
+  if (minutes < 60) return `${minutes}m ago`
+  const hours = Math.floor(minutes / 60)
+  if (hours < 24) return `${hours}h ago`
+  const days = Math.floor(hours / 24)
+  return `${days}d ago`
+}
 
 export default function SocialPanel({ currentUserId, onOpenDm }: Props) {
   const [tab, setTab] = useState<Tab>('friends')
@@ -266,12 +280,24 @@ export default function SocialPanel({ currentUserId, onOpenDm }: Props) {
                   key={f.friendshipId}
                   className="px-3 py-2 border-b-2 border-black/40 flex items-center gap-2"
                 >
+                  <div className="relative shrink-0">
+                    <Avatar url={f.friend.avatar} name={f.friend.displayName} size={28} />
+                    <span
+                      title={f.friend.isOnline ? 'Online' : 'Offline'}
+                      className={`absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border border-black ${
+                        f.friend.isOnline ? 'bg-green-400' : 'bg-white/30'
+                      }`}
+                    />
+                  </div>
                   <div className="flex flex-col flex-1 min-w-0">
                     <span className="font-pressStart text-[10px] text-white truncate">
                       {f.friend.displayName}
                     </span>
                     <span className="font-pressStart text-[8px] text-white/40 truncate">
                       @{f.friend.login} · Lvl {f.friend.level.toFixed(1)}
+                    </span>
+                    <span className="font-pressStart text-[8px] text-white/30 truncate">
+                      {f.friend.isOnline ? 'Online' : formatLastSeen(f.friend.lastSeenAt)}
                     </span>
                   </div>
                   <button

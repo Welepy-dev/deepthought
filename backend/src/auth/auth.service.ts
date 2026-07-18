@@ -1,4 +1,12 @@
-import { ForbiddenException, Injectable, Logger } from '@nestjs/common';
+import {
+  ForbiddenException,
+  Injectable,
+  Logger,
+  NotFoundException,
+  UnauthorizedException,
+} from '@nestjs/common';
+import { User } from '@prisma/client';
+import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../prisma/prisma.service';
 import { UsersService } from '../users/users.service';
 import { SyncService } from '../sync/sync.service';
@@ -28,6 +36,17 @@ export interface AuthTokensResponse extends OtpTokens {
 }
 
 export type Login42Response = RequiresOtpResponse | AuthTokensResponse;
+
+/** Resposta de POST /auth/email/start — diz ao frontend qual o próximo passo. */
+export interface EmailStartResponse {
+  /** 'setup' = primeiro login por email (OTP enviado); 'password' = pedir password. */
+  status: 'setup' | 'password';
+  /** Presente apenas no fluxo de setup, para POST /auth/email/set-password. */
+  userId?: string;
+}
+
+/** Custo do bcrypt para hashing de passwords. */
+const BCRYPT_COST = 10;
 
 /**
  * Fluxo de login:
@@ -91,6 +110,122 @@ export class AuthService {
 
     // O accessToken OAuth2 é incluído no JWT para permitir sync manual com a 42.
     const tokens = await this.otpService.issueTokens(user, accessToken);
+
+    return {
+      success: tokens.success,
+      accessToken: tokens.accessToken,
+      refreshToken: tokens.refreshToken,
+      access_token: tokens.accessToken,
+      user: {
+        id: user.id,
+        login: user.login,
+        displayName: user.displayName,
+        avatar: user.avatar,
+        campus: user.campus,
+        coalition: user.coalition,
+        level: user.level,
+        role: user.role,
+        characterCreated: user.characterCreated,
+      },
+    };
+  }
+
+  /**
+   * Primeiro passo do login por email: decide o fluxo a partir do estado da conta.
+   *
+   * - Email inexistente → 404 (só contas 42 já registadas podem entrar por email).
+   * - Sem password definida → devolve status='setup' para onboarding imediato.
+   * - Password definida → status='password' (frontend pede a password).
+   */
+  async startEmailLogin(email: string): Promise<EmailStartResponse> {
+    const user = await this.findUserByEmail(email);
+
+    if (!user) {
+      throw new NotFoundException('This email is not registered');
+    }
+
+    if (user.isBanned) {
+      throw new ForbiddenException('This account is banned');
+    }
+
+    if (!user.passwordHash) {
+      return { status: 'setup', userId: user.id };
+    }
+
+    return { status: 'password' };
+  }
+
+  /**
+   * Onboarding do primeiro login por email: define a password e emite tokens.
+   * Não depende de OTP porque a criação da password já serve como onboarding.
+   */
+  async setPasswordWithOtp(
+    userId: string,
+    code: string,
+    password: string,
+  ): Promise<AuthTokensResponse> {
+    const user = await this.prisma.user.findUniqueOrThrow({ where: { id: userId } });
+
+    const passwordHash = await bcrypt.hash(password, BCRYPT_COST);
+
+    const updated = await this.prisma.user.update({
+      where: { id: user.id },
+      data: {
+        passwordHash,
+        isEmailVerified: true,
+        otpCode: null,
+        otpExpiresAt: null,
+        lastSeenAt: new Date(),
+      },
+    });
+
+    return this.buildTokensResponse(updated);
+  }
+
+  /** Login por email para contas que já definiram password. */
+  async loginWithEmail(
+    email: string,
+    password: string,
+  ): Promise<AuthTokensResponse> {
+    const user = await this.findUserByEmail(email);
+
+    if (!user) {
+      throw new NotFoundException('This email is not registered');
+    }
+
+    if (user.isBanned) {
+      throw new ForbiddenException('This account is banned');
+    }
+
+    if (!user.passwordHash) {
+      // Conta ainda sem password: o frontend deve refazer /auth/email/start.
+      throw new UnauthorizedException('Password not set for this account');
+    }
+
+    const matches = await bcrypt.compare(password, user.passwordHash);
+
+    if (!matches) {
+      throw new UnauthorizedException('Invalid password');
+    }
+
+    const updated = await this.prisma.user.update({
+      where: { id: user.id },
+      data: { lastSeenAt: new Date() },
+    });
+
+    return this.buildTokensResponse(updated);
+  }
+
+  /** Procura por email sem sensibilidade a maiúsculas (42 guarda emails variados). */
+  private findUserByEmail(email: string): Promise<User | null> {
+    return this.prisma.user.findFirst({
+      where: { email: { equals: email, mode: 'insensitive' } },
+    });
+  }
+
+  /** Monta a resposta de tokens+perfil usada pelos fluxos de email. */
+  private async buildTokensResponse(user: User): Promise<AuthTokensResponse> {
+    const tokens = await this.otpService.issueTokens(user);
 
     return {
       success: tokens.success,

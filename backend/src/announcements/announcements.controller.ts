@@ -37,7 +37,7 @@ export class AnnouncementsController {
   @Post()
   @HttpCode(HttpStatus.CREATED)
   @UseGuards(RolesGuard)
-  @Roles(Role.ADMIN)
+  @Roles(Role.MODERATOR, Role.ADMIN)
   create(
     @CurrentUser('sub') adminId: string,
     @Body(new ValidationPipe({ whitelist: true })) dto: CreateAnnouncementDto,
@@ -47,7 +47,7 @@ export class AnnouncementsController {
 
   @Delete(':id')
   @UseGuards(RolesGuard)
-  @Roles(Role.ADMIN)
+  @Roles(Role.MODERATOR, Role.ADMIN)
   remove(@Param('id') id: string) {
     return this.announcementsService.remove(id);
   }

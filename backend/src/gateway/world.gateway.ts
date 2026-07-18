@@ -111,6 +111,10 @@ export class WorldGateway
     /** Sala pessoal usada por notificações em tempo real (RealtimeService). */
     await client.join(userRoom(user.id));
 
+    this.prisma.user
+      .update({ where: { id: user.id }, data: { lastSeenAt: new Date() } })
+      .catch((err) => this.logger.warn(`Failed to persist lastSeenAt for ${user.id}: ${err}`));
+
     client.emit('player:state', { players: this.presence.list(user.id) });
     client.to(WORLD_ROOM).emit('player:join', entry);
 
@@ -123,6 +127,15 @@ export class WorldGateway
 
     this.presence.remove(userId);
     client.to(WORLD_ROOM).emit('player:leave', { userId });
+
+    /**
+     * Fire-and-forget: outra sessão do mesmo user pode continuar ligada
+     * (isUserConnected reflecte isso via socket.io rooms), mas lastSeenAt
+     * é só "quando foi visto pela última vez", não precisa de bloquear o disconnect.
+     */
+    this.prisma.user
+      .update({ where: { id: userId }, data: { lastSeenAt: new Date() } })
+      .catch((err) => this.logger.warn(`Failed to persist lastSeenAt for ${userId}: ${err}`));
 
     this.logger.log(`Player disconnected: ${userId}`);
   }

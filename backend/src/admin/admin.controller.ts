@@ -25,10 +25,6 @@ import {
   UpdateRoleDto,
 } from './dto/admin.dto';
 
-/**
- * Todas as rotas exigem JWT válido, utilizador não banido e role ADMIN
- * actual na base de dados.
- */
 @Controller('admin')
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles(Role.ADMIN)
@@ -36,6 +32,7 @@ export class AdminController {
   constructor(private readonly adminService: AdminService) {}
 
   @Get('users')
+  @Roles(Role.MODERATOR, Role.ADMIN)
   findAll(
     @Query(new ValidationPipe({ transform: true, whitelist: true }))
     query: AdminUsersQueryDto,
@@ -68,6 +65,7 @@ export class AdminController {
   }
 
   @Patch('users/:id/ban')
+  @Roles(Role.MODERATOR, Role.ADMIN)
   ban(
     @Param('id') id: string,
     @CurrentUser('sub') adminId: string,
@@ -78,6 +76,7 @@ export class AdminController {
   }
 
   @Patch('users/:id/unban')
+  @Roles(Role.MODERATOR, Role.ADMIN)
   unban(@Param('id') id: string) {
     return this.adminService.unban(id);
   }

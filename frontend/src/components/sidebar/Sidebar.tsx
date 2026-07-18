@@ -167,7 +167,7 @@ export default function Sidebar() {
         onSelect={switchTo}
         unreadCount={unreadCount}
         announcementsUnread={announcementsUnread}
-        isAdmin={user?.role === 'ADMIN'}
+        isAdmin={user?.role === 'ADMIN' || user?.role === 'MODERATOR'}
       />
 
       <div className={`${panelOpen ? '' : 'hidden'} lg:block relative w-72 max-w-[calc(100vw-4rem)] h-full overflow-hidden bg-neutral_contrast border-l-4 border-black`}>

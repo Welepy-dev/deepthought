@@ -4,6 +4,7 @@ import App from "../App";
 
 import SignIn from "../signin/signin";
 import OTPEmail from "../signin/OTPemail";
+import EmailSetup from "../signin/EmailSetup";
 
 import PhaserGame from "../components/PhaserGame";
 import ProfileSetup from "../pages/ProfileSetup";
@@ -30,6 +31,11 @@ export function AppRouter() {
 			<Route
 				path="/OTPEmail"
 				element={<App CustomComponent={OTPEmail} />}
+			/>
+
+			<Route
+				path="/EmailSetup"
+				element={<App CustomComponent={EmailSetup} />}
 			/>
 
 			<Route
