@@ -8,15 +8,29 @@ import { OtpService } from './otp/otp.service';
 
 describe('AuthService', () => {
   let service: AuthService;
+  let otpService: { generateAndSendOtp: jest.Mock; issueTokens: jest.Mock };
+  let prismaService: { user: { findFirst: jest.Mock; update: jest.Mock } };
 
   beforeEach(async () => {
+    otpService = {
+      generateAndSendOtp: jest.fn(),
+      issueTokens: jest.fn(),
+    };
+
+    prismaService = {
+      user: {
+        findFirst: jest.fn(),
+        update: jest.fn(),
+      },
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         AuthService,
         {
           /** Mock do Prisma para evitar conexão real à BD no smoke test. */
           provide: PrismaService,
-          useValue: { user: { update: jest.fn() } },
+          useValue: prismaService,
         },
         {
           /** Mock do UsersService usado pelo AuthService via DI. */
@@ -36,7 +50,7 @@ describe('AuthService', () => {
         {
           /** Mock do OTP para satisfazer o primeiro-login flow. */
           provide: OtpService,
-          useValue: { generateAndSendOtp: jest.fn(), issueTokens: jest.fn() },
+          useValue: otpService,
         },
       ],
     }).compile();
@@ -46,5 +60,20 @@ describe('AuthService', () => {
 
   it('should be defined', () => {
     expect(service).toBeDefined();
+  });
+
+  it('should not send an OTP for first-time email login onboarding', async () => {
+    prismaService.user.findFirst.mockResolvedValue({
+      id: 'user-1',
+      email: 'student@42.fr',
+      passwordHash: null,
+      isBanned: false,
+      isEmailVerified: false,
+    });
+
+    const result = await service.startEmailLogin('student@42.fr');
+
+    expect(result).toEqual({ status: 'setup', userId: 'user-1' });
+    expect(otpService.generateAndSendOtp).not.toHaveBeenCalled();
   });
 });

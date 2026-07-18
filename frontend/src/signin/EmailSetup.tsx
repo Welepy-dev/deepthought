@@ -5,12 +5,10 @@ import { API_BASE_URL } from '../config/api'
 
 /**
  * Onboarding do primeiro login por email.
- * O backend já enviou um código OTP para o email registado; aqui o utilizador
- * prova posse do email e define a password que passa a usar nos próximos logins.
+ * O utilizador define a password para usar a partir do segundo login.
  */
 export default function EmailSetup() {
 
-	const [otp, setOtp] = useState('')
 	const [password, setPassword] = useState('')
 	const [confirm, setConfirm] = useState('')
 	const [error, setError] = useState('')
@@ -24,11 +22,6 @@ export default function EmailSetup() {
 
 		if (!userId) {
 			setError('User not found in setup link')
-			return
-		}
-
-		if (otp.length !== 6) {
-			setError('Invalid OTP code')
 			return
 		}
 
@@ -53,14 +46,14 @@ export default function EmailSetup() {
 				},
 				body: JSON.stringify({
 					userId,
-					code: otp,
+					code: '',
 					password,
 				}),
 			})
 			const data = await response.json()
 
 			if (!response.ok) {
-				setError(data.message || 'Invalid OTP')
+				setError(data.message || 'Could not create password')
 				return
 			}
 
@@ -92,20 +85,8 @@ export default function EmailSetup() {
 			</div>
 
 			<p className='px-8 font-pressStart text-contrast text-xs text-center'>
-				First login with email: enter the code we sent you and set your password.
+				First login with email: create your password to continue.
 			</p>
-
-			<input
-				value={otp}
-				onChange={(e) => {
-					setOtp(e.target.value)
-					setError('')
-				}}
-				placeholder="* * * * * *"
-				className={inputClass}
-				type="text"
-				maxLength={6}
-			/>
 
 			<input
 				value={password}

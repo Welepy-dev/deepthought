@@ -25,9 +25,8 @@ export class SetPasswordDto {
   @IsString()
   userId!: string;
 
-  /** Código OTP de 6 dígitos enviado para o email, prova de posse. */
+  /** Código OTP mantido apenas por compatibilidade com o cliente; não é usado na nova onboarding. */
   @IsString()
-  @Matches(/^\d{6}$/, { message: 'code must contain exactly 6 digits' })
   code!: string;
 
   /** Nova password a definir; mínimo 8 caracteres. */

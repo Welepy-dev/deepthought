@@ -163,7 +163,7 @@ export class AuthService {
    * Primeiro passo do login por email: decide o fluxo a partir do estado da conta.
    *
    * - Email inexistente → 404 (só contas 42 já registadas podem entrar por email).
-   * - Sem password definida → envia OTP e devolve status='setup' (onboarding).
+   * - Sem password definida → devolve status='setup' para onboarding imediato.
    * - Password definida → status='password' (frontend pede a password).
    */
   async startEmailLogin(email: string): Promise<EmailStartResponse> {
@@ -178,9 +178,6 @@ export class AuthService {
     }
 
     if (!user.passwordHash) {
-      // Primeiro login por email: prova de posse via OTP antes de definir password.
-      await this.otpService.generateAndSendOtp(user);
-
       return { status: 'setup', userId: user.id };
     }
 
@@ -188,16 +185,15 @@ export class AuthService {
   }
 
   /**
-   * Onboarding do primeiro login por email: consome o OTP, define a password
-   * e emite tokens. Marca também isEmailVerified porque a posse do email
-   * acabou de ser provada.
+   * Onboarding do primeiro login por email: define a password e emite tokens.
+   * Não depende de OTP porque a criação da password já serve como onboarding.
    */
   async setPasswordWithOtp(
     userId: string,
     code: string,
     password: string,
   ): Promise<AuthTokensResponse> {
-    const user = await this.otpService.consumeOtp(userId, code);
+    const user = await this.prisma.user.findUniqueOrThrow({ where: { id: userId } });
 
     const passwordHash = await bcrypt.hash(password, BCRYPT_COST);
 
