@@ -1,44 +1,21 @@
-/**
- * Interface que define a estrutura de uma conquista.
- * Usada para popular a base de dados e verificar critérios.
- */
+
 export interface AchievementDefinition {
-  /** Identificador único da conquista (usado como slug na BD) */
   slug: string;
-  /** Título legível da conquista */
   title: string;
-  /** Descrição do que é necessário para desbloquear */
   description: string;
-  /** Emoji ou URL do ícone */
   icon: string;
-  /** XP atribuído ao desbloquear */
   xpReward: number;
-  /** Função que avalia se o utilizador desbloqueou esta conquista */
   check: (stats: UserStats) => boolean;
 }
 
-/**
- * Estatísticas do utilizador usadas para avaliar conquistas.
- * Calculadas pelo AchievementsService a partir da base de dados.
- */
+
 export interface UserStats {
-  /** Número de projectos com status FINISHED */
   completedProjects: number;
-  /** Nível actual do utilizador */
   level: number;
-  /** Pontos de avaliação acumulados */
   evalPoints: number;
-  /** Número de vezes que ajudou outros utilizadores */
   helpOffersGiven: number;
 }
 
-/**
- * Catálogo de todas as conquistas disponíveis na plataforma.
- * Cada entrada define os critérios de desbloqueio e a recompensa em XP.
- *
- * Para adicionar novas conquistas, basta adicionar entradas a esta lista.
- * O AchievementsService percorre este catálogo automaticamente.
- */
 export const ACHIEVEMENT_DEFINITIONS: AchievementDefinition[] = [
   // ─── PROJECTOS ────────────────────────────────────────
   {
