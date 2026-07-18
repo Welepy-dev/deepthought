@@ -38,15 +38,12 @@ export class NotificationsService {
       this.realtime.emitToUser(userId, 'notification:new', notification);
 
       return notification;
-      } catch (error) {
-            const message =
-            error instanceof Error ? error.message : String(error);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
 
-            this.logger.error(
-            `Failed to create notification for user ${userId}: ${message}`,
-            );
-            return null;
-        }
+      this.logger.error(`Failed to create notification for user ${userId}: ${message}`);
+      return null;
+    }
   }
 
   async notifyAchievementUnlocked(
@@ -131,6 +128,16 @@ export class NotificationsService {
       `${requesterLogin} enviou-te um pedido de amizade`,
       undefined,
       { friendshipId },
+    );
+  }
+
+  async notifySystem(userId: string, title: string, message?: string) {
+    return this.create(userId, NotificationType.SYSTEM, title, message);
+  }
+
+  async notifySystemBroadcast(userIds: string[], title: string, message?: string) {
+    return Promise.allSettled(
+      userIds.map((userId) => this.notifySystem(userId, title, message)),
     );
   }
 

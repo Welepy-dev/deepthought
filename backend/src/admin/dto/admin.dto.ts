@@ -14,6 +14,9 @@ import {
 import { Role } from '@prisma/client';
 import { Transform, Type } from 'class-transformer';
 
+export type AdminUserSortBy = 'level' | 'login' | 'lastSeenAt' | 'createdAt';
+export type SortOrder = 'asc' | 'desc';
+
 export class CreateUserDto {
   @IsInt()
   fortyTwoId!: number;
@@ -102,6 +105,14 @@ export class AdminUsersQueryDto {
   @IsOptional()
   @IsString()
   login?: string;
+
+  @IsOptional()
+  @IsIn(['level', 'login', 'lastSeenAt', 'createdAt'])
+  sortBy?: AdminUserSortBy = 'createdAt';
+
+  @IsOptional()
+  @IsIn(['asc', 'desc'])
+  order?: SortOrder = 'desc';
 
   @IsOptional()
   @Type(() => Number)
